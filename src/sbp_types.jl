@@ -315,6 +315,10 @@ struct TriFace{T} <: DenseFace{T}
     numnodes = facecub.numnodes
     @assert( size(interp,2) == size(deriv,2) == numnodes )
     normal = T[0 -1; 1 1; -1 0]'
+    #-----
+    # normal = T[0 -1; sqrt(3)/2 1/2; -sqrt(3)/2 1/2]'
+    # wface = SymCubatures.calcweights(facecub)./2.0
+    #---
     nbrperm = SymCubatures.getneighbourpermutation(facecub)
     wface = SymCubatures.calcweights(facecub)
     stencilsize = size(interp,1)

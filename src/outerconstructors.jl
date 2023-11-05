@@ -114,6 +114,7 @@ function getTriSBPDiagE(;degree::Int=1, Tsbp::Type=Float64,
   Q = zeros(Tsbp, (cub.numnodes, cub.numnodes, 2))
   w, Q, E = SummationByParts.buildoperators(cub, vtx, degree,vertices=vertices)
   #-------
+  # vtx = Tsbp[0 0; 1 0; 1/2 sqrt(3/4)];
   # D,H,E,Q,S = SummationByParts.buildoperators_pocs(cub, vtx, degree,vertices=vertices)
   # w = diag(H)
   #-------

@@ -1491,18 +1491,20 @@ Construct SBP operators using the Projection Onto Convex Sets (POCS) algorithm
 """
 
 function buildoperators_pocs(cub::TriSymCub{T}, vtx::Array{T,2}, d::Int; vertices::Bool=false) where {T}
-  w = SymCubatures.calcweights(cub)
   
   # compute the Vandermonde matrix and its derivatives
   x = SymCubatures.calcnodes(cub, vtx)
-  w = SymCubatures.calcweights(cub)
-  V, Vdx, Vdy = SummationByParts.OrthoPoly.vandermonde_arnoldi(d, x[1,:],x[2,:],compute_grad=true)
+  w = SymCubatures.calcweights(cub) #.*(sqrt(3)/8)
+  V, Vdx, Vdy = SummationByParts.OrthoPoly.vandermonde(d, x[1,:],x[2,:],compute_grad=true)
   H = diagm(w)
 
   face = TriFace{T}(d, cub, vtx, vertices=vertices)
   E = zeros(T, (cub.numnodes,cub.numnodes,2) )
   SummationByParts.boundaryoperator!(face, 1, view(E,:,:,1))
   SummationByParts.boundaryoperator!(face, 2, view(E,:,:,2))
+
+  small_indx=findall(abs.(E) .< 1e-14)
+  E[small_indx] .= 0.0
 
   S = zeros(T, (cub.numnodes,cub.numnodes,2))
   S[:,:,1] = pocs_sparse_s(S[:,:,1],H,E[:,:,1],V,Vdx)
@@ -1520,9 +1522,10 @@ function buildoperators_pocs(cub::TriSymCub{T}, vtx::Array{T,2}, d::Int; vertice
   D[:,:,2] = diagm(1.0 ./ w) * Q[:,:,2]
 
   # println(norm(D[:,:,1]*V))
-  println(norm(D[:,:,1]*V - Vdx))
-  println(norm(D[:,:,2]*V - Vdy))
-  # println(norm(S[:,:,1]+S[:,:,1]'))
+  println("\n","accuracy_error = ", norm(D[:,:,1]*V - Vdx))
+  # println(norm(D[:,:,2]*V - Vdy))
+
+  println("norm(S+S') = ", norm(S[:,:,1]+S[:,:,1]'))
   # println(norm(S[:,:,2]+S[:,:,2]'))
   # println(count(iszero,S[:,:,1])/(size(S[:,:,1],1)^2))
 

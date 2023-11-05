@@ -14,7 +14,7 @@ This function plots quadruature data on the right triangle using Plot.jl.
 * `x`: the quadrature points in Cartesian coordinates
 
 """
-function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[])
+function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[],vtx=[-1 -1; 1 -1; -1 1],save_dir::String="",write_title=false)
     dir=""
     path_file=""
 
@@ -57,26 +57,58 @@ function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[])
     xvol = convert(Array{Float64},xvol)
     yvol = convert(Array{Float64},yvol)
 
-    xvert = Array([-1,1,-1,-1])
-    yvert = Array([-1,-1,1,-1])
+    xvert = vtx[:,1] #Array([-1,1,-1,-1])
+    push!(xvert, vtx[1,1])
+    yvert = vtx[:,2] #Array([-1,-1,1,-1])
+    push!(yvert, vtx[1,2])
     xfacet = []
     yfacet = []
-    for i = 1:length(xvol)
-        if (abs(xvol[i] + yvol[i]-0.0) < 1e-13 || abs(xvol[i]+1.0)<1e-13 || abs(yvol[i]+1.0)<1e-13)
-            push!(xfacet,xvol[i])
-            push!(yfacet,yvol[i])
+    vtx_right = [-1 -1; 1 -1; -1 1]
+    vtx_equilateral = [0 0; 1 0; 1/2 sqrt(3/4)]
+    legendpos = :topright
+
+    if norm(vtx .- vtx_equilateral) <= 1e-13
+        for i in eachindex(xvol)
+            if (abs(yvol[i]-0.0) < 1e-13 || abs(yvol[i]-sqrt(3)*xvol[i])<1e-13 || abs(yvol[i]+sqrt(3)*(xvol[i]-1))<1e-13)
+                push!(xfacet,xvol[i])
+                push!(yfacet,yvol[i])
+            end
         end
+        legendpos = :topright
+    else norm(vtx .- vtx_right) <= 1e-13
+        for i in eachindex(xvol)
+            if (abs(xvol[i] + yvol[i]-0.0) < 1e-13 || abs(xvol[i]+1.0)<1e-13 || abs(yvol[i]+1.0)<1e-13)
+                push!(xfacet,xvol[i])
+                push!(yfacet,yvol[i])
+            end
+        end
+        legendpos = :top
     end
 
     Plots.plot(xvert,yvert, seriestype=:path, linestyle=:solid, lc="black", lw=1.5, label="")
-    Plots.scatter!(xvol,yvol,m = (3.5, :black),label="volume nodes") 
+    Plots.scatter!(xvol,yvol,m = (3.5, :black),label="volume nodes")
+    for i in eachindex(xvol)
+        annotate!(xvol[i]-0.01,yvol[i]+0.02,Plots.text("$i", :blue,:right, 12))
+    end
     label_facet=""
     if xfacet!=[]
         label_facet="volume nodes on facet"
     end
+    title=""
+    if write_title==true
+        title = string("q=$q",", n=$n   ")
+    end
     p=Plots.scatter!(xfacet, yfacet; #aspect_ratio=:equal, grid=false,  xaxis=false, yaxis=false,
     ms=4.5, markercolor=:transparent, markerstrokecolor=:red, markerstrokewidth = 2,  label=label_facet, 
-    legend=true, legendposition=:top, legendfontsize=8)
+    legend=true, legendposition=legendpos, legendfontsize=8, title=title, titleposition=:right, framestyle = :box)
+
+    if save_dir != ""
+        path = save_dir
+        file_name = string("tri_","_q$q","_n$n",".pdf")
+        file= joinpath(path,file_name)
+        Plots.savefig(p,file)
+        # savefig(p,file,width=3000,height=3000,scale=4)
+    end
 
     display(p)
 

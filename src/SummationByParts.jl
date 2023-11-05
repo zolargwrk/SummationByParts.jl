@@ -139,4 +139,6 @@ include("edgestabilize.jl") #<--- functions related to edge stabilization
 include("utils.jl") # <--- miscellaneous functions
 include("derivecubature.jl") # <--- functions to derive cubature rules
 
+include("buildsparseoperators.jl") #<--- functions related to building sparse SBP operators 
+
 end # module

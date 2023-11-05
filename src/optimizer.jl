@@ -224,7 +224,7 @@ function pso(fun::Function, ne::Int, cub::SymCub{T}, q::Int, mask::AbstractArray
     c2 = 1.5                # confidence in group position
     w = 0.6                 # inertia weight
     compute_grad = false
-
+    maskw=cub.numparams+1:cub.numweights
     # initialize the particles
     x = zeros(T,np,ne)
     xrand = rand(T,np, ne)
@@ -298,6 +298,14 @@ function pso(fun::Function, ne::Int, cub::SymCub{T}, q::Int, mask::AbstractArray
                 end
             end 
 
+            # for j = 1:5
+            #     if (xp[i,j]>0.655)
+            #         xp[i,j] = 0.655-(100*eps*rand()+eps) #(xR-xL)*rand() + xL
+            #     elseif (xp[i,j]<0.01)
+            #         xp[i,j] = 0.01+100*eps*rand()+eps #(xR-xL)*rand() + xL
+            #     end
+            # end 
+
             # evaluate objective function for the new particle position
             SymCubatures.setparams!(cub, xp[i,:][1:cub.numparams])
             SymCubatures.setweights!(cub, xp[i,:][cub.numparams+1:end])
@@ -351,6 +359,7 @@ function pso(fun::Function, ne::Int, cub::SymCub{T}, q::Int, mask::AbstractArray
             end
             if (fgb>1e-1 && maxval<=1e-4)
                 x[:,mask] = (1-delta2) .*x[:,mask] + delta2 .*rand(np, ne)[:,mask]
+                # x[:,maskw] = (1-delta2) .*x[:,maskw] + delta2 .*rand(np, ne)[:,maskw]
                 for i = 1:np
                     SymCubatures.setparams!(cub, x[i,:][1:cub.numparams])
                     SymCubatures.setweights!(cub, x[i,:][cub.numparams+1:end])
@@ -365,6 +374,7 @@ function pso(fun::Function, ne::Int, cub::SymCub{T}, q::Int, mask::AbstractArray
             elseif (fgb<=1e-1 && maxval<=1e-8)
                 # x[:, mask] += (fgb*(xR-xL)/delta1) .*rand(np,ne)[:,mask]
                 x[:,mask] = (1-delta1) .*x[:,mask] + delta1 .*rand(np, ne)[:,mask]
+                # x[:,maskw] = (1-delta1) .*x[:,maskw] + delta1 .*rand(np, ne)[:,maskw]
                 for i = 1:np
                     SymCubatures.setparams!(cub, x[i,:][1:cub.numparams])
                     SymCubatures.setweights!(cub, x[i,:][cub.numparams+1:end])
@@ -529,6 +539,18 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         end
         alpha=1.0
         iter+=1
+
+        # for i=1:5
+        #     if v[i]<0.01
+        #         v -= alpha*dv
+        #         alpha = (eps - v[i])/(dv[i])
+        #         v += alpha*dv
+        #     elseif v[i]>0.655
+        #         v -= alpha*dv
+        #         alpha = ((0.655-eps) - v[i])/(dv[i])
+        #         v += alpha*dv
+        #     end
+        # end
 
         if mod(k,iter_show)==0
             push!(res_lst,res)

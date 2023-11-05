@@ -326,6 +326,7 @@ function deriveTriCubatureDiagE(;q::Int=1,
                                 xinit=[],
                                 xedge_sym_group=[], 
                                 xedge=[],
+                                mask=[],
                                 T=Float64)
 
     if xinit_sym_group==[]
@@ -371,8 +372,10 @@ function deriveTriCubatureDiagE(;q::Int=1,
                                     centroid=centroid)
 
     # find the indices of the parameters we want to solve for 
-    mask = SymCubatures.getInternalParamMask(cub)
-    append!(mask, (cub.numparams+1):(cub.numparams+cub.numweights))  
+    if mask==[]
+        mask = SymCubatures.getInternalParamMask(cub)
+        append!(mask, (cub.numparams+1):(cub.numparams+cub.numweights))  
+    end
 
     # compute the number of parameters and weights
     numparams = cub.numparams
