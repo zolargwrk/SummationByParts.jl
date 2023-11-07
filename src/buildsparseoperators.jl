@@ -232,7 +232,7 @@ function node_sparse_stencil(cub::TriSymCub{T}, p::Int) where {T}
 
     vtx = T[0 0; 1 0; 1/2 sqrt(3/4)]
     xy = SymCubatures.calcnodes(cub, vtx)
-    lines = SummationByParts.sparse_stencil(cub, p)
+    lines = sparse_stencil(cub, p)
     node_stencil = zeros(Int64,cub.numnodes,p+2,2)
 
     for i = 1:cub.numnodes
@@ -245,19 +245,47 @@ function node_sparse_stencil(cub::TriSymCub{T}, p::Int) where {T}
 
         x = line1_x
         y = line2_x
-        if xy[1,x[1]] > xy[1,y[1]]
-            x = line2_x
-            y = line1_x
-        end
-        if (xy[2,x[1]] < 1e-10 && xy[1,x[1]] > 1e-10)
-            xtemp = copy(x)
-            x = y
-            y = xtemp
-        end
+        # if xy[1,x[1]] > xy[1,y[1]]
+        #     x = line2_x
+        #     y = line1_x
+        # end
+        # if (xy[2,x[1]] < 1e-10 && xy[1,x[1]] > 1e-10)
+        #     xtemp = copy(x)
+        #     x = y
+        #     y = xtemp
+        # end
 
         node_stencil[i,:,:] = Array([x;y])'
     end
 
+    ddxi = zeros(Float64,2,cub.numnodes)
+    ddeta = zeros(Float64,2,cub.numnodes)
+    jac = zeros(Float64,1,cub.numnodes)
+    oper_lgl = getLineSegSBPLobbato(degree=p+1)
+    Q = oper_lgl.Q[:,:,1]
+    H = diagm(oper_lgl.w)
+    D = inv(H)*Q[:,:,1]
+
+    Dxi = zeros(Float64,cub.numnodes,cub.numnodes,2)
+    for i = 1:2
+        for j=1:cub.numnodes
+            Dxi[j,node_stencil[j,:,i],i] = D[findall(a->j in a, node_stencil[j,:,i])[1],:]
+        end
+    end
+    for i = 1:2
+        ddxi[i,:] = Dxi[:,:,1] * (xy'[:,i])
+        ddeta[i,:] = Dxi[:,:,2] * (xy'[:,i])
+    end
+
+    for i = 1:cub.numnodes
+        jac[1,i] = ddxi[1,i]*ddeta[2,i] - ddeta[1,i]*ddxi[2,i]
+        if jac[1,i] <= 0.0
+            xtemp = node_stencil[i,:,1]
+            node_stencil[i,:,1] = node_stencil[i,:,2]
+            node_stencil[i,:,2] = xtemp
+        end
+    end
+    
     return node_stencil
 end
 
@@ -275,8 +303,11 @@ The metric terms are approximated using 1D SBP operator.
 
 **Outputs**
 
-* `metric_terms`: a matrix containing the stencil in each direction for each node
-
+* `ddxi` : contains a vector of [dx/dξ; dy/dξ]'
+* `ddeta`: contains a vector of [dx/dη; dy/dη]'
+* `dxid` : contains a vector of [dξ/dx; dξ/dy]'
+* `detad`: contains a vector of [dη/dx; dη/dy]'
+* `jac`  : contains the determinant of the metric Jacobian at each node
 """
 
 function sparse_metric_terms(cub::TriSymCub{T}, vtx::Array{T,2}, p::Int) where {T}
@@ -286,25 +317,38 @@ function sparse_metric_terms(cub::TriSymCub{T}, vtx::Array{T,2}, p::Int) where {
     ddeta = zeros(Float64,2,cub.numnodes)
     detad = zeros(Float64,2,cub.numnodes)
     jac = zeros(Float64,1,cub.numnodes)
-    node_lines = SummationByParts.node_sparse_stencil(cub, p)
+    node_lines = node_sparse_stencil(cub, p)
     xy = SymCubatures.calcnodes(cub, vtx)
 
     oper_lgl = getLineSegSBPLobbato(degree=p+1)
     Q = oper_lgl.Q[:,:,1]
     H = diagm(oper_lgl.w)
     D = inv(H)*Q[:,:,1]
-    # writedlm(stdout, round.(D,digits=4))
 
+    # for i = 1:cub.numnodes
+    #     for j = 1:2
+    #         ddxi[j,i] = ((D * reshape(xy[j,node_lines[i,:,1]],(p+2,1)))[findall(a->i in a, node_lines[i,:,1])])[1]
+    #         ddeta[j,i] = ((D * reshape(xy[j,node_lines[i,:,2]],(p+2,1)))[findall(a->i in a, node_lines[i,:,2])])[1]
+    #     end
+    # end
 
-    for i = 1:cub.numnodes
-        for j = 1:2
-            ddxi[j,i] = ((D * reshape(xy[j,node_lines[i,:,1]],(p+2,1)))[findall(a->i in a, node_lines[i,:,1])])[1]
-            ddeta[j,i] = ((D * reshape(xy[j,node_lines[i,:,2]],(p+2,1)))[findall(a->i in a, node_lines[i,:,2])])[1]
+    Dxi = zeros(Float64,cub.numnodes,cub.numnodes,2)
+    for i = 1:2
+        for j=1:cub.numnodes
+            Dxi[j,node_lines[j,:,i],i] = D[findall(a->j in a, node_lines[j,:,i])[1],:]
         end
+    end
+    for i = 1:2
+        ddxi[i,:] = Dxi[:,:,1] * (xy'[:,i])
+        ddeta[i,:] = Dxi[:,:,2] * (xy'[:,i])
     end
 
     for i = 1:cub.numnodes
         jac[1,i] = ddxi[1,i]*ddeta[2,i] - ddeta[1,i]*ddxi[2,i]
+
+        if jac[1,i] <= 0.0
+            @warn "There is a negative metric Jacobian term."
+        end
     end
 
     for i = 1:cub.numnodes
@@ -322,5 +366,80 @@ function sparse_metric_terms(cub::TriSymCub{T}, vtx::Array{T,2}, p::Int) where {
     # detadx = detad[1,:]
     # detady = detad[2,:]
     return ddxi, ddeta, dxid, detad, jac
+end
+
+
+"""
+### SummationByParts.sparse_sbp_operator
+
+Constructs a sparse SBP operator
+
+**Inputs**
+
+* `cub`: symmetric cubature rule
+* `p`: maximum total degree for the Proriol polynomials
+
+**Outputs**
+
+* `D`: the strong derivative matrix
+* `Q`: the weak derivative matrix
+* `H`: the norm matrix
+* `E`: the boundary integration oprator
+"""
+function sparse_sbp_operator(cub::TriSymCub{T}, vtx::Array{T,2}, p::Int) where {T}
+
+    ddxi, ddeta, dxid, detad, jac = sparse_metric_terms(cub, vtx, p)
+    node_lines = node_sparse_stencil(cub, p)
+    oper_lgl = getLineSegSBPLobbato(degree=p+1)
+    Q1 = oper_lgl.Q[:,:,1]
+    H1 = diagm(oper_lgl.w)
+    D1 = inv(H1)*Q1[:,:,1]
+
+    H2 = zeros(T,cub.numnodes,cub.numnodes,2)
+    for i=1:cub.numnodes
+        ix = findall(a->i in a, node_lines[i,:,1])[1]
+        iy = findall(a->i in a, node_lines[i,:,2])[1]
+        H2[i,i,1] = H1[ix,ix] 
+        H2[i,i,2] = H1[iy,iy]
+    end
+
+    Q2 = zeros(T,cub.numnodes,cub.numnodes,2)
+    for i = 1:2
+        for j=1:cub.numnodes
+            Q2[j,node_lines[j,:,i],i] = Q1[findall(a->j in a, node_lines[j,:,i])[1],:]
+        end
+    end
+
+    D2 = zeros(T,cub.numnodes,cub.numnodes,2)
+    for i = 1:2
+        for j=1:cub.numnodes
+            D2[j,node_lines[j,:,i],i] = D1[findall(a->j in a, node_lines[j,:,i])[1],:]
+        end
+    end
+
+    w, Qdense, E = SummationByParts.buildoperators(cub, vtx, p,vertices=true)
+    H = diagm(w) #.*diagm(jac[1,:])
+    Q = zeros(T,cub.numnodes,cub.numnodes,2)
+    D = zeros(T,cub.numnodes,cub.numnodes,2)
+    S = zeros(T,cub.numnodes,cub.numnodes,2)
+
+    # S[:,:,1] = 0.5.*(diagm(ddeta[2,:])*Qxi[:,:,1] - Qxi[:,:,1]' * diagm(ddeta[2,:])) + 
+    #            0.5.*(-diagm(ddxi[2,:])*Qxi[:,:,2] + Qxi[:,:,2]' * diagm(ddxi[2,:]))
+    # S[:,:,2] = 0.5.*(-diagm(ddeta[1,:])*Qxi[:,:,1] + Qxi[:,:,1]' * diagm(ddeta[1,:])) + 
+    #            0.5.*(diagm(ddxi[1,:])*Qxi[:,:,2] - Qxi[:,:,2]' * diagm(ddxi[1,:]))
+    S[:,:,1] = 0.5.*H*(diagm(dxid[1,:])*D2[:,:,1] + diagm(detad[1,:])*D2[:,:,2]) -
+               0.5.*(D2[:,:,1]'*diagm(dxid[1,:]) + D2[:,:,2]'*diagm(detad[1,:]))*H
+    S[:,:,2] = 0.5.*H*(diagm(dxid[2,:])*D2[:,:,1] + diagm(detad[2,:])*D2[:,:,2]) -
+               0.5.*(D2[:,:,1]'*diagm(dxid[2,:]) + D2[:,:,2]'*diagm(detad[2,:]))*H
+
+    for i = 1:2
+        Q[:,:,i] = S[:,:,i] + 0.5 .* E[:,:,i]
+        D[:,:,i] = inv(H)*Q[:,:,i]
+    end
+
+    # D[:,:,1] = diagm(dxid[1,:])*D2[:,:,1] + diagm(detad[1,:])*D2[:,:,2]
+    # D[:,:,2] = diagm(dxid[2,:])*D2[:,:,1] + diagm(detad[2,:])*D2[:,:,2]
+
+    return D, Q, H, E, S, D2, Q2, H2, ddxi, ddeta, dxid, detad, jac, D1
 end
 

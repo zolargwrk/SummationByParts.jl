@@ -55,7 +55,7 @@ function buildfacereconstruction(facecub::PointSymCub{T}, cub::LineSymCub{T},
 end
 
 function buildfacereconstruction(facecub::LineSymCub{T}, cub::TriSymCub{T},
-                                    vtx::Array{T,2}, d::Int) where {T}
+                                    vtx::Array{T,2}, d::Int; faceopertype::Symbol=:Omega) where {T}
   # first, decide whether or not to use volume nodes or just face nodes
   if SymCubatures.getnumfacenodes(cub) >= (d+1)
     perm = SymCubatures.getfacebasedpermutation(cub, faceonly=true)
@@ -85,18 +85,28 @@ function buildfacereconstruction(facecub::LineSymCub{T}, cub::TriSymCub{T},
   # b = vec(Pf)
   # use basis pursuit on A x = b
   # find dominant entries and resolve for R
-  if SymCubatures.getnumfacenodes(cub) >= (d+1)
-    A = kron(Pv', I(facecub.numnodes))
-    #println("size(A) = ",size(A))
-    #println("rank(A) = ",rank(A))
-    b = vec(Pf)
-    #println("size(b) = ",size(b))
-    R = zeros(facecub.numnodes*size(perm,1))
-    SummationByParts.calcSparseSolution!(A, b, R)
-    R = reshape(R, (facecub.numnodes,size(perm,1)))
+  #----------
+  # below is commented for test, uncomment if needed
+  # if SymCubatures.getnumfacenodes(cub) >= (d+1)
+  #   A = kron(Pv', I(facecub.numnodes))
+  #   #println("size(A) = ",size(A))
+  #   #println("rank(A) = ",rank(A))
+  #   b = vec(Pf)
+  #   #println("size(b) = ",size(b))
+  #   R = zeros(facecub.numnodes*size(perm,1))
+  #   SummationByParts.calcSparseSolution!(A, b, R)
+  #   R = reshape(R, (facecub.numnodes,size(perm,1)))
+  # else
+  #   R = (pinv(Pv')*Pf')'
+  # end
+  #----------
+  if faceopertype == :DiagE
+    R = 1.0*I(facecub.numnodes)
   else
     R = (pinv(Pv')*Pf')'
   end
+  #----------
+
   return R, perm
 end
 

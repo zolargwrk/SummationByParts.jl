@@ -262,7 +262,7 @@ function (::Type{TriFace{T}})(degree::Int, volcub::TriSymCub{T},
   local perm::Array{Int,2}
   if vertices
     facecub, facevtx = SummationByParts.Cubature.quadrature(2*degree, T, internal=false)
-    R, perm = SummationByParts.buildfacereconstruction(facecub, volcub, vtx, degree+1)
+    R, perm = SummationByParts.buildfacereconstruction(facecub, volcub, vtx, degree+1,faceopertype=:DiagE)
   else
     facecub, facevtx = SummationByParts.Cubature.quadrature(2*degree, T, internal=true)
     R, perm = SummationByParts.buildfacereconstruction(facecub, volcub, vtx, degree)    

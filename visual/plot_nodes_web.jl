@@ -88,7 +88,7 @@ function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[],vtx=[-1
     Plots.plot(xvert,yvert, seriestype=:path, linestyle=:solid, lc="black", lw=1.5, label="")
     Plots.scatter!(xvol,yvol,m = (3.5, :black),label="volume nodes")
     for i in eachindex(xvol)
-        annotate!(xvol[i]-0.01,yvol[i]+0.02,Plots.text("$i", :blue,:right, 12))
+        annotate!(xvol[i]-0.01,yvol[i]+0.02,Plots.text("$i", :blue,:right, 10))
     end
     label_facet=""
     if xfacet!=[]
@@ -104,7 +104,7 @@ function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[],vtx=[-1
 
     if save_dir != ""
         path = save_dir
-        file_name = string("tri_","_q$q","_n$n",".pdf")
+        file_name = string("tri","_q$q","_n$n","_numbered",".pdf")
         file= joinpath(path,file_name)
         Plots.savefig(p,file)
         # savefig(p,file,width=3000,height=3000,scale=4)
