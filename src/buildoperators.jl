@@ -337,7 +337,7 @@ function boundaryoperator!(face::AbstractFace{T}, di::Int,
   return E
 end
 
-function boundaryoperator!(face::SparseFace{T}, di::Int,
+function (face::SparseFace{T}, di::Int,
                               E::AbstractArray{T,2}) where {T}
   @assert( size(E,1) == size(E,2) )
   @assert( di >= 1 && di <= 3)
@@ -466,6 +466,44 @@ function accuracyconstraints(cub::TriSymCub{T}, vtx::Array{T,2}, d::Int,
   x = SymCubatures.calcnodes(cub, vtx)
 #  Ex, Ey = SummationByParts.boundaryoperators(cub, vtx, d)
   w = SymCubatures.calcweights(cub)
+#  Ex *= 0.5; Ey *= 0.5
+  # the number of unknowns for in the skew-symmetric matrices
+  numQvars = convert(Int, cub.numnodes*(cub.numnodes-1)/2)
+  # the number of accuracy equations
+  #numeqns = convert(Int, cub.numnodes*(d+1)*(d+2)/2)
+  numeqns = convert(Int, cub.numnodes*((d+1)*(d+2)/2 - dl*(dl+1)/2))
+  A = zeros(T, (numeqns, numQvars))
+  bx = zeros(T, numeqns)
+  by = zeros(T, numeqns)
+  # loop over ortho polys up to degree d
+  ptr = 0
+  #for r = 0:d
+  for r = dl:d
+    for j = 0:r
+      i = r-j
+      P = OrthoPoly.proriolpoly(vec(x[1,:]), vec(x[2,:]), i, j)
+      dPdx, dPdy = OrthoPoly.diffproriolpoly(vec(x[1,:]), vec(x[2,:]), i, j)
+      # loop over the lower part of the skew-symmetric matrices
+      for row = 2:cub.numnodes
+        offset = convert(Int, (row-1)*(row-2)/2)
+        for col = 1:row-1
+          A[ptr+row, offset+col] += P[col]
+          A[ptr+col, offset+col] -= P[row]
+        end
+      end
+      bx[ptr+1:ptr+cub.numnodes] = diagm(w)*dPdx - E[:,:,1]*P
+      by[ptr+1:ptr+cub.numnodes] = diagm(w)*dPdy - E[:,:,2]*P
+      ptr += cub.numnodes
+    end
+  end
+  return A, bx, by
+end
+
+function accuracyconstraints(cub::TriAsymCub{T}, vtx::Array{T,2}, d::Int,
+                                E::Array{T,3}; dl::Int=0) where {T}
+  x = AsymCubatures.calcnodes(cub)
+#  Ex, Ey = SummationByParts.boundaryoperators(cub, vtx, d)
+  w = AsymCubatures.calcweights(cub)
 #  Ex *= 0.5; Ey *= 0.5
   # the number of unknowns for in the skew-symmetric matrices
   numQvars = convert(Int, cub.numnodes*(cub.numnodes-1)/2)
@@ -719,6 +757,72 @@ function buildoperators(cub::TriSymCub{T}, vtx::Array{T,2}, d::Int; vertices::Bo
   return w, Q, E
 end
 
+function buildoperators(cub::TriAsymCub{T}, vtx::Array{T,2}, d::Int; vertices::Bool=false) where {T}
+  w = AsymCubatures.calcweights(cub)
+  face = TriFace{T}(d, cub, vtx, vertices=vertices)
+  Q = zeros(T, (cub.numnodes,cub.numnodes,2) )
+  SummationByParts.boundaryoperator!(face, 1, view(Q,:,:,1))
+  SummationByParts.boundaryoperator!(face, 2, view(Q,:,:,2))
+  E = zeros(T, (cub.numnodes,cub.numnodes,2))
+  E .= copy(Q)
+  Q .*= 0.5 #scale!(Q, 0.5)
+  A, bx, by = SummationByParts.accuracyconstraints(cub, vtx, d, Q)
+
+  #F = svdfact(A)
+  #for i = 1:size(A,2)
+  #  @printf("singular value %d = %g\n",i,F[:S][i])
+  #end
+
+  # use the minimum norm least-squares solution
+  #Afact = qrfact(A)
+  #x = Afact\bx; y = Afact\by
+  #x = A\bx; y = A\by
+  # use the minimum norm least-squares solution
+  Ainv = pinv(A)
+  x = Ainv*bx; y = Ainv*by
+  use_aux = false
+  if use_aux
+    # temporary test of using auxillary accuracy conditions; will leave this
+    # here until it can be tested more thoroughly
+    C, dx, dy = SummationByParts.accuracyconstraints(cub, vtx, d+1, Q, dl=d+1)
+    svd = svdfact(A, thin=false)
+    rnk = rank(A)
+    #println("size(A) = ",size(A))
+    #println("rank(A) = ",rnk)
+    #println("size(C) = ",size(C))
+    #println("rank(C) = ",rank(C))
+    Y = svd[:V][:,1:rnk]
+    Z = svd[:V][:,rnk+1:end]
+    xp = diagm(1.0/svd[:S][1:rnk])*(svd[:U][:,1:rnk]'*bx)
+    yp = diagm(1.0/svd[:S][1:rnk])*(svd[:U][:,1:rnk]'*by)
+    CZ = C*Z
+    xn = (CZ'*CZ)\(Z'*C'*dx - CZ'*C*Y*xp)
+    yn = (CZ'*CZ)\(Z'*C'*dy - CZ'*C*Y*yp)
+    x = Y*xp + Z*xn
+    y = Y*yp + Z*yn
+
+    @assert( norm(A*x - bx) < 1e-12)
+    @assert( norm(A*y - by) < 1e-12)
+    #println( norm(A*x - bx))
+    #println( norm(A*y - by))
+    #Z = nullspace(A)
+    #CZ = C*Z
+    #rhsx = CZ'*dx; rhsy = CZ'*dy
+    #H = CZ'*CZ
+    #x += Z*(H\rhsx); y += Z*(H\rhsy)
+  end
+  for row = 2:cub.numnodes
+    offset = convert(Int, (row-1)*(row-2)/2)
+    for col = 1:row-1
+      Q[row,col,1] += x[offset+col]
+      Q[col,row,1] -= x[offset+col]
+      Q[row,col,2] += y[offset+col]
+      Q[col,row,2] -= y[offset+col]
+    end
+  end
+  return w, Q, E
+end
+
 function buildoperators(cub::TetSymCub{T}, vtx::Array{T,2}, d::Int; faceopertype::Symbol=:Omega,
                         facecub::Union{TriSymCub{T}, Nothing}=nothing, facevtx::Union{Array{T,2}, Nothing}=nothing) where {T}
   w = SymCubatures.calcweights(cub)
@@ -856,8 +960,8 @@ zeros in the S matrices, but they are not returned as sparse matrices.
 """
 function buildsparseoperators(cub::TriSymCub{T}, vtx::Array{T,2}, d::Int) where {T}
   w = SymCubatures.calcweights(cub)
-  face = getTriFaceForDiagE(d, cub, vtx)
-  #face = TriFace{T}(d, cub, vtx, vertices=false) #vertices=true)
+  # face = getTriFaceForDiagE(d, cub, vtx)
+  face = TriFace{T}(d, cub, vtx, vertices=true) #vertices=true)
   Q = zeros(T, (cub.numnodes,cub.numnodes,2) )
   SummationByParts.boundaryoperator!(face, 1, view(Q,:,:,1))
   SummationByParts.boundaryoperator!(face, 2, view(Q,:,:,2))
@@ -866,12 +970,47 @@ function buildsparseoperators(cub::TriSymCub{T}, vtx::Array{T,2}, d::Int) where 
   # find a sparse solution for skew-symmetric Sx
   x = zeros(size(A,2))
   SummationByParts.calcSparseSolution!(A, bx, x)
+  # SummationByParts.calcSparseSolution!(A, bx, x, cub, d)
   # find a sparse solution for skew-symmetric Sy
   y = zeros(size(A,2))
-  SummationByParts.calcSparseSolution!(A, by, y)
+  # SummationByParts.calcSparseSolution!(A, by, y)
   
+  # println(norm(A*x - bx))
   @assert( norm(A*x - bx) < 1e-12)
-  @assert( norm(A*y - by) < 1e-12)
+  # @assert( norm(A*y - by) < 1e-12)
+
+  for row = 2:cub.numnodes
+    offset = convert(Int, (row-1)*(row-2)/2)
+    for col = 1:row-1
+      Q[row,col,1] += x[offset+col]
+      Q[col,row,1] -= x[offset+col]
+      Q[row,col,2] += y[offset+col]
+      Q[col,row,2] -= y[offset+col]
+    end
+  end
+  return w, Q
+end
+
+function buildsparseoperators(cub::TriAsymCub{T}, vtx::Array{T,2}, d::Int) where {T}
+  w = AsymCubatures.calcweights(cub)
+  # face = getTriFaceForDiagE(d, cub, vtx)
+  face = TriFace{T}(d, cub, vtx, vertices=true) #vertices=true)
+  Q = zeros(T, (cub.numnodes,cub.numnodes,2) )
+  SummationByParts.boundaryoperator!(face, 1, view(Q,:,:,1))
+  SummationByParts.boundaryoperator!(face, 2, view(Q,:,:,2))
+  Q .*= 0.5 #scale!(Q, 0.5)
+  A, bx, by = SummationByParts.accuracyconstraints(cub, vtx, d, Q)
+  # find a sparse solution for skew-symmetric Sx
+  x = zeros(size(A,2))
+  # SummationByParts.calcSparseSolution!(A, bx, x)
+  SummationByParts.calcSparseSolution!(A, bx, x, cub, d)
+  # find a sparse solution for skew-symmetric Sy
+  y = zeros(size(A,2))
+  # SummationByParts.calcSparseSolution!(A, by, y)
+  
+  # println(norm(A*x - bx))
+  @assert( norm(A*x - bx) < 1e-10)
+  # @assert( norm(A*y - by) < 1e-10)
 
   for row = 2:cub.numnodes
     offset = convert(Int, (row-1)*(row-2)/2)
@@ -887,13 +1026,14 @@ end
 
 function buildsparseoperators(cub::TetSymCub{T}, vtx::Array{T,2}, d::Int) where {T}
   w = SymCubatures.calcweights(cub)
-  face = getTetFaceForDiagE(d, cub, vtx, faceopertype=:Omega)
-  #face = TetFace{T}(d+1, cub, vtx)
+  # face = getTetFaceForDiagE(d, cub, vtx, faceopertype=:DiagE)
+  face = TetFace{T}(d+1, cub, vtx)
   Q = zeros(T, (cub.numnodes,cub.numnodes,3) )
   SummationByParts.boundaryoperator!(face, 1, view(Q,:,:,1))
   SummationByParts.boundaryoperator!(face, 2, view(Q,:,:,2))
   SummationByParts.boundaryoperator!(face, 3, view(Q,:,:,3))
-  scale!(Q, 0.5)
+  # scale!(Q, 0.5)
+  Q .*=0.5
   A, bx, by, bz = SummationByParts.accuracyconstraints(cub, vtx, d, Q)
   #rankA = rank(A)
 
@@ -902,7 +1042,7 @@ function buildsparseoperators(cub::TetSymCub{T}, vtx::Array{T,2}, d::Int) where 
     # find a sparse solution for skew-symmetric Sx
     x = zeros(size(A,2))
     SummationByParts.calcSparseSolution!(A, bx, x)
-    
+    # SummationByParts.calcSparseSolution!(A, bx, x, cub, d)
     # s = zeros(size(A,2))
     # SummationByParts.basispursuit!(A, bx, s, rho=1.5, alpha=1.0, hist=false,
     #                                abstol=1e-6, reltol=1e-6)
@@ -916,7 +1056,7 @@ function buildsparseoperators(cub::TetSymCub{T}, vtx::Array{T,2}, d::Int) where 
     
     # find a sparse solution for skew-symmetric Sy
     y = zeros(size(A,2))
-    SummationByParts.calcSparseSolution!(A, by, y)
+    # SummationByParts.calcSparseSolution!(A, by, y)
     
     # SummationByParts.basispursuit!(A, by, s, rho=1.5, alpha=1.0, hist=false,
     #                                abstol=1e-6, reltol=1e-6)
@@ -930,7 +1070,7 @@ function buildsparseoperators(cub::TetSymCub{T}, vtx::Array{T,2}, d::Int) where 
     
     # find a sparse solution for skew-symmetric Sz
     z = zeros(size(A,2))
-    SummationByParts.calcSparseSolution!(A, bz, z)
+    # SummationByParts.calcSparseSolution!(A, bz, z)
     
     # SummationByParts.basispursuit!(A, bz, s, rho=1.5, alpha=1.0, hist=false,
     #                                abstol=1e-6, reltol=1e-6)
@@ -949,8 +1089,8 @@ function buildsparseoperators(cub::TetSymCub{T}, vtx::Array{T,2}, d::Int) where 
   #x = Ainv*bx; y = Ainv*by; z = Ainv*bz
   
   println(norm(A*x - bx))
-  println(norm(A*y - by))
-  println(norm(A*z - bz))
+  # println(norm(A*y - by))
+  # println(norm(A*z - bz))
   
   #@assert( norm(A*x - bx) < 1e-12)
   #@assert( norm(A*y - by) < 1e-12)
@@ -1507,7 +1647,59 @@ function buildoperators_pocs(cub::TriSymCub{T}, vtx::Array{T,2}, d::Int; vertice
   E[small_indx] .= 0.0
 
   S = zeros(T, (cub.numnodes,cub.numnodes,2))
-  S[:,:,1] = pocs_sparse_s(S[:,:,1],H,E[:,:,1],V,Vdx)
+  # S[:,:,1] = pocs_sparse_s(S[:,:,1],H,E[:,:,1],V,Vdx)
+  S[:,:,1] = pocs_sparse_s(cub, d, S[:,:,1],H,E[:,:,1],V,Vdx)
+  
+  Q = zeros(T, (cub.numnodes,cub.numnodes,2))
+  D = zeros(T, (cub.numnodes,cub.numnodes,2))
+
+  Q[:,:,1] = S[:,:,1]+0.5.*E[:,:,1]
+  D[:,:,1] = diagm(1.0 ./ w) * Q[:,:,1]
+  
+  # vtxperm = [1; 2; 3]
+  # perm = SymCubatures.getpermutation(cub, vtxperm)
+  # S[:,:,2]= reshape(S[:,:,1], (cub.numnodes,size(perm,1)))
+  Q[:,:,2] = S[:,:,2]+0.5.*E[:,:,2]
+  D[:,:,2] = diagm(1.0 ./ w) * Q[:,:,2]
+
+  # println(norm(D[:,:,1]*V))
+  println("\n","accuracy_error = ", norm(D[:,:,1]*V - Vdx))
+  # println(norm(D[:,:,2]*V - Vdy))
+
+  println("norm(S+S') = ", norm(S[:,:,1]+S[:,:,1]'))
+  # println(norm(S[:,:,2]+S[:,:,2]'))
+  # println(count(iszero,S[:,:,1])/(size(S[:,:,1],1)^2))
+
+  
+  A = zeros(T, cub.numnodes,cub.numnodes)
+  for i = 1:2
+    A += S[:,:,i] + E[:,:,i]
+  end
+  # condA = norm(A)*norm(inv(A))
+  # println(condA)
+
+  return D,H,E,Q,S
+end
+
+function buildoperators_pocs(cub::TriAsymCub{T}, vtx::Array{T,2}, d::Int; vertices::Bool=false) where {T}
+  
+  # compute the Vandermonde matrix and its derivatives
+  x = AsymCubatures.calcnodes(cub)
+  w = AsymCubatures.calcweights(cub) #.*(sqrt(3)/8)
+  V, Vdx, Vdy = SummationByParts.OrthoPoly.vandermonde(d, x[1,:],x[2,:],compute_grad=true)
+  H = diagm(w)
+
+  face = TriFace{T}(d, cub, vtx, vertices=vertices)
+  E = zeros(T, (cub.numnodes,cub.numnodes,2) )
+  SummationByParts.boundaryoperator!(face, 1, view(E,:,:,1))
+  SummationByParts.boundaryoperator!(face, 2, view(E,:,:,2))
+
+  small_indx=findall(abs.(E) .< 1e-14)
+  E[small_indx] .= 0.0
+
+  S = zeros(T, (cub.numnodes,cub.numnodes,2))
+  # S[:,:,1] = pocs_sparse_s(S[:,:,1],H,E[:,:,1],V,Vdx)
+  S[:,:,1] = pocs_sparse_s(cub, d, S[:,:,1],H,E[:,:,1],V,Vdx)
   
   Q = zeros(T, (cub.numnodes,cub.numnodes,2))
   D = zeros(T, (cub.numnodes,cub.numnodes,2))

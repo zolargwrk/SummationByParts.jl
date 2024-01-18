@@ -106,11 +106,15 @@ points
 
 """
 function getTriSBPDiagE(;degree::Int=1, Tsbp::Type=Float64,
-                        vertices::Bool=true, quad_degree::Int=-1)
+                        vertices::Bool=true, quad_degree::Int=-1, asym_cub::Bool=false)
   if quad_degree==-1
     quad_degree = 2*degree-1
   end
-  cub, vtx = SummationByParts.Cubature.getTriCubatureDiagE(quad_degree, Tsbp, vertices=vertices)
+  if asym_cub
+    cub, vtx = SummationByParts.CubatureB.getTriCubatureDiagE(quad_degree, Tsbp)
+  else
+    cub, vtx = SummationByParts.Cubature.getTriCubatureDiagE(quad_degree, Tsbp, vertices=vertices)
+  end
   Q = zeros(Tsbp, (cub.numnodes, cub.numnodes, 2))
   w, Q, E = SummationByParts.buildoperators(cub, vtx, degree,vertices=vertices)
   #-------
@@ -257,7 +261,7 @@ Outer constructor for backward compatibility
 """
 function (::Type{TriFace{T}})(degree::Int, volcub::TriSymCub{T},
                                  vtx::Array{T,2}; vertices::Bool=false) where {T}
-  @assert( degree >= 1 && degree <= 10 )
+  @assert( degree >= 1 && degree <= 30 )
   local R::Array{T,2}
   local perm::Array{Int,2}
   if vertices
@@ -273,6 +277,22 @@ function (::Type{TriFace{T}})(degree::Int, volcub::TriSymCub{T},
   wface = SymCubatures.calcweights(facecub)
   stencilsize = size(R,2)
   dstencilsize = size(D,1)
+  TriFace{T}(degree, facecub, facevtx, Matrix(R'), perm, D, Dperm)
+end
+
+function (::Type{TriFace{T}})(degree::Int, volcub::TriAsymCub{T},
+                                 vtx::Array{T,2}; vertices::Bool=true) where {T}
+  @assert( degree >= 1 && degree <= 10 )
+  local R::Array{T,2}
+  local perm::Array{Int,2}
+
+  facecub, facevtx = SummationByParts.CubatureB.quadratureGivenNodes(2*degree, volcub.edgeparams, T)
+  R, perm = SummationByParts.buildfacereconstruction(facecub, volcub, vtx, degree+1,faceopertype=:DiagE)
+
+  # D, Dperm = SummationByParts.buildfacederivatives(facecub, volcub, vtx, degree)
+  D = zeros(volcub.numnodes, facecub.numnodes, 2)
+  Dperm = perm
+
   TriFace{T}(degree, facecub, facevtx, Matrix(R'), perm, D, Dperm)
 end
 
@@ -316,6 +336,29 @@ function getTriFaceForDiagE(degree::Int, volcub::TriSymCub{T},
   return TriSparseFace{T}(degree, facecub, facevtx, perm_red, D, Dperm)
 end
 
+function getTriFaceForDiagE(degree::Int, volcub::TriAsymCub{T},
+                               vtx::Array{T,2}; vertices::Bool=true) where {T}
+  #@assert( degree >= 1 && degree <= 4 )
+  if vertices
+    facecub, facevtx = SummationByParts.CubatureB.quadratureGivenNodes(2*degree, volcub.edgeparams)
+    R, perm = SummationByParts.buildfacereconstruction(facecub, volcub, vtx, degree+1)
+  else
+    facecub, facevtx = SummationByParts.Cubature.quadrature(2*degree, T, internal=true)
+    R, perm = SummationByParts.buildfacereconstruction(facecub, volcub, vtx, degree)
+  end
+  perm_red = zeros(Int, (facecub.numnodes,3))
+  for i = 1:facecub.numnodes
+    node = argmax(R[i,:])
+    perm_red[i,:] = perm[node,:]
+  end  
+  # D, Dperm = SummationByParts.buildfacederivatives(facecub, volcub, vtx,
+  #                                                  degree)
+  D = zeros(volcub.numnodes, facecub.numnodes, 2)
+  Dperm = perm
+  # nbrperm = SymCubatures.getneighbourpermutation(facecub)
+  # wface = SymCubatures.calcweights(facecub)
+  return TriSparseFace{T}(degree, facecub, facevtx, perm_red, D, Dperm)
+end
 """
 ### SBP.TetFace
 
@@ -344,6 +387,7 @@ function (::Type{TetFace{T}})(degree::Int, volcub::TetSymCub{T},
       # facecub, facevtx = SummationByParts.Cubature.getTriCubatureOmega(2*degree, T)
     else
       facecub, facevtx = SummationByParts.Cubature.getTriCubatureOmega(2*degree, T)
+      # facecub, facevtx = SummationByParts.Cubature.getTriCubatureDiagE(2*degree, T)
     end
   end
   
@@ -379,11 +423,11 @@ boundary operators, E.
 """
 function getTetFaceForDiagE(degree::Int, volcub::TetSymCub{T},
                                vtx::Array{T,2}; faceopertype::Symbol = :DiagE) where {T}
-  @assert( degree >= 1 && degree <= 4 )
+  @assert( degree >= 1 && degree <= 5 )
   
   # facecub, facevtx = SummationByParts.Cubature.getTriCubatureOmega(2*degree, T)
   if faceopertype == :DiagE
-    facecub, facevtx = SummationByParts.Cubature.getTriCubatureDiagE(2*degree, T)
+    facecub, facevtx = SummationByParts.Cubature.getTriCubatureForTetFaceDiagE(2*degree, T)
   else
     facecub, facevtx = SummationByParts.Cubature.getTriCubatureOmega(2*degree, T)
   end

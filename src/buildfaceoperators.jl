@@ -100,13 +100,45 @@ function buildfacereconstruction(facecub::LineSymCub{T}, cub::TriSymCub{T},
   #   R = (pinv(Pv')*Pf')'
   # end
   #----------
-  if faceopertype == :DiagE
-    R = 1.0*I(facecub.numnodes)
-  else
-    R = (pinv(Pv')*Pf')'
-  end
+  # if faceopertype == :DiagE
+  #   R = 1.0*I(facecub.numnodes)
+  # else
+  #   R = (pinv(Pv')*Pf')'
+  # end
+  R = (pinv(Pv')*Pf')'
   #----------
 
+  return R, perm
+end
+
+function buildfacereconstruction(facecub::LineAsymCub{T}, cub::TriAsymCub{T},
+                                    vtx::Array{T,2}, d::Int; faceopertype::Symbol=:Omega) where {T}
+  # first, decide whether or not to use volume nodes or just face nodes
+  if AsymCubatures.getnumfacenodes(cub) >= (d+1)
+    perm = AsymCubatures.getfacebasedpermutation(cub, faceonly=true)
+  else
+    perm = SymCubatures.getfacebasedpermutation(cub, faceonly=false)
+  end
+  # evaluate the basis at the volume and face cubature points
+  # N = convert(Int, (d+1)*(d+2)/2 )
+  # Pv = zeros(T, (size(perm,1),N) )  
+  # Pf = zeros(T, (facecub.numnodes,N) ) 
+  # xv = AsymCubatures.calcnodes(cub)
+  # xf = SymCubatures.calcnodes(facecub, vtx[[1;2],:])
+  # xf = xf[:, sortperm(xf[1, :])]
+  # ptr = 1
+  # for r = 0:d
+  #   for j = 0:r
+  #     i = r-j
+  #     Pv[:,ptr] = OrthoPoly.proriolpoly(vec(xv[1,perm[:,1]]),
+  #                                       vec(xv[2,perm[:,1]]), i, j)
+  #     Pf[:,ptr] = OrthoPoly.proriolpoly(vec(xf[1,:]), vec(xf[2,:]), i, j)
+  #     ptr += 1
+  #   end
+  # end
+  
+  # R = (pinv(Pv')*Pf')'
+  R = I(facecub.numnodes)
   return R, perm
 end
 
@@ -140,12 +172,12 @@ function buildfacereconstruction(facecub::TriSymCub{T}, cub::TetSymCub{T},
     end
   end
   #R = Pf/Pv
-  # R = (pinv(Pv')*Pf')'
-  if faceopertype == :DiagE
-    R = 1.0*I(facecub.numnodes)
-  else
-    R = (pinv(Pv')*Pf')'
-  end
+  R = (pinv(Pv')*Pf')'
+  # if faceopertype == :DiagE
+  #   R = 1.0*I(facecub.numnodes)
+  # else
+  #   R = (pinv(Pv')*Pf')'
+  # end
 
   return R, perm
 end
@@ -206,6 +238,34 @@ function buildfacederivatives(facecub::LineSymCub{T}, cub::TriSymCub{T},
   dPdx = zeros(T, (facecub.numnodes,N) )
   dPdy = zeros(T, (facecub.numnodes,N) )
   xv = SymCubatures.calcnodes(cub, vtx)
+  xf = SymCubatures.calcnodes(facecub, vtx[[1;2],:])
+  ptr = 1
+  for r = 0:d
+    for j = 0:r
+      i = r-j
+      Pv[:,ptr] = OrthoPoly.proriolpoly(vec(xv[1,perm[:,1]]),
+                                        vec(xv[2,perm[:,1]]), i, j)
+      dPdx[:,ptr], dPdy[:,ptr] = 
+      OrthoPoly.diffproriolpoly(vec(xf[1,:]), vec(xf[2,:]), i, j)
+      ptr += 1
+    end
+  end
+  A = pinv(Pv')
+  D = zeros(cub.numnodes, facecub.numnodes, 2)
+  D[:,:,1] = A*dPdx'
+  D[:,:,2] = A*dPdy'
+  return D, perm
+end
+
+function buildfacederivatives(facecub::LineSymCub{T}, cub::TriAsymCub{T},
+                                 vtx::Array{T,2}, d::Int) where {T}
+  perm = AsymCubatures.getfacebasedpermutation(cub)
+  # evaluate the basis at the volume and face cubature points
+  N = convert(Int, (d+1)*(d+2)/2 )
+  Pv = zeros(T, (cub.numnodes,N) )  
+  dPdx = zeros(T, (facecub.numnodes,N) )
+  dPdy = zeros(T, (facecub.numnodes,N) )
+  xv = AsymCubatures.calcnodes(cub)
   xf = SymCubatures.calcnodes(facecub, vtx[[1;2],:])
   ptr = 1
   for r = 0:d

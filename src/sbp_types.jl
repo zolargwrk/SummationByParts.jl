@@ -62,14 +62,14 @@ Defines diagonal-norm SBP first-derivative operators on a right-triangle.
 struct TriSBP{T} <: AbstractSBP{T}
   degree::Int
   numnodes::Int
-  cub::TriSymCub{T}
+  cub::Union{TriSymCub{T},TriAsymCub{T}}
   vtx::Array{T,2}
   w::Array{T,1}
   Q::Array{T,3}
   E::Array{T,3}
 
   # inner constructor
-  function TriSBP{T}(degree::Int, cub::TriSymCub{T}, vtx::Array{T,2},
+  function TriSBP{T}(degree::Int, cub::Union{TriSymCub{T},TriAsymCub{T}}, vtx::Array{T,2},
                      w::Array{T,1}, Q::Array{T,3}, E::Array{T,3}) where T
     @assert( degree >= 1 && degree <= 10)
     numnodes = cub.numnodes
@@ -297,7 +297,7 @@ struct TriFace{T} <: DenseFace{T}
   numnodes::Int
   stencilsize::Int
   dstencilsize::Int
-  cub::LineSymCub{T}
+  cub::Union{LineSymCub{T},LineAsymCub{T}}
   vtx::Array{T,2}
   wface::Array{T,1}
   normal::Array{T,2}
@@ -311,7 +311,7 @@ struct TriFace{T} <: DenseFace{T}
   function TriFace{T}(degree::Int, facecub::LineSymCub{T}, facevtx::Array{T,2},
                       interp::Array{T,2}, perm::Array{Int,2},
                       deriv::Array{T,3}, dperm::Array{Int,2}) where T
-    @assert( degree >= 1 && degree <= 10 )
+    @assert( degree >= 1 && degree <= 30 )
     numnodes = facecub.numnodes
     @assert( size(interp,2) == size(deriv,2) == numnodes )
     normal = T[0 -1; 1 1; -1 0]'
@@ -325,6 +325,26 @@ struct TriFace{T} <: DenseFace{T}
     dstencilsize = size(deriv,1)
     new{T}(degree, facecub.numnodes, stencilsize, dstencilsize, facecub, facevtx, 
         wface, normal, interp, perm, deriv, dperm, nbrperm)
+  end
+
+  function TriFace{T}(degree::Int, facecub::LineAsymCub{T}, facevtx::Array{T,2},
+    interp::Array{T,2}, perm::Array{Int,2},
+    deriv::Array{T,3}, dperm::Array{Int,2}) where T
+    @assert( degree >= 1 && degree <= 10 )
+    numnodes = facecub.numnodes
+    @assert( size(interp,2) == size(deriv,2) == numnodes )
+    normal = T[0 -1; 1 1; -1 0]'
+    #-----
+    # normal = T[0 -1; sqrt(3)/2 1/2; -sqrt(3)/2 1/2]'
+    # wface = SymCubatures.calcweights(facecub)./2.0
+    #---
+    # nbrperm = AsymCubatures.getneighbourpermutation(facecub)
+    nbrperm = perm # must change
+    wface = AsymCubatures.calcweights(facecub)
+    stencilsize = size(interp,1)
+    dstencilsize = size(deriv,1)
+    new{T}(degree, facecub.numnodes, stencilsize, dstencilsize, facecub, facevtx, 
+    wface, normal, interp, perm, deriv, dperm, nbrperm)
   end
 end
 
@@ -415,7 +435,7 @@ struct TriSparseFace{T} <: SparseFace{T}
   degree::Int
   numnodes::Int
   dstencilsize::Int
-  cub::LineSymCub{T}
+  cub::Union{LineSymCub{T},LineAsymCub{T}}
   vtx::Array{T,2}
   wface::Array{T,1}
   normal::Array{T,2}
@@ -434,6 +454,21 @@ struct TriSparseFace{T} <: SparseFace{T}
     normal = T[0 -1; 1 1; -1 0]'
     nbrperm = SymCubatures.getneighbourpermutation(facecub)
     wface = SymCubatures.calcweights(facecub)
+    dstencilsize = size(deriv,1)
+    new{T}(degree, facecub.numnodes, dstencilsize, facecub, facevtx, wface, normal,
+        perm, deriv, dperm, nbrperm)
+  end
+
+  function TriSparseFace{T}(degree::Int, facecub::LineAsymCub{T},
+                            facevtx::Array{T,2}, perm::Array{Int,2},
+                            deriv::Array{T,3}, dperm::Array{Int,2}) where T
+    # @assert( degree >= 1 && degree <= 5 )
+    numnodes = facecub.numnodes
+    @assert( size(deriv,2) == numnodes )
+    normal = T[0 -1; 1 1; -1 0]'
+    nbrperm = perm
+    # nbrperm = SymCubatures.getneighbourpermutation(facecub)
+    wface = AsymCubatures.calcweights(facecub)
     dstencilsize = size(deriv,1)
     new{T}(degree, facecub.numnodes, dstencilsize, facecub, facevtx, wface, normal,
         perm, deriv, dperm, nbrperm)

@@ -46,6 +46,7 @@ function deriveTriCubatureOmega(;q::Int=1,
                                 verbose::Bool=false,
                                 xinit_sym_group=[],
                                 xinit=[],
+                                mask=[],
                                 T=Float64)
 
     @assert(vertices==false && midedges==false && numedge==0, "Unsupported type of symmetry group provided.")
@@ -81,7 +82,9 @@ function deriveTriCubatureOmega(;q::Int=1,
                                     centroid=centroid)
     
     # find the indices of the parameters we want to solve for 
-    mask = 1:(cub.numparams+cub.numweights)
+    if mask ==[]
+        mask = 1:(cub.numparams+cub.numweights)
+    end
 
     # compute the number of parameters and weights
     numparams = cub.numparams
@@ -184,6 +187,7 @@ function deriveTriCubatureGamma(;q::Int=1,
                                 verbose::Bool=false,
                                 xinit_sym_group=[], 
                                 xinit=[],
+                                mask=[],
                                 T=Float64)
 
     if xinit_sym_group==[]
@@ -217,7 +221,10 @@ function deriveTriCubatureGamma(;q::Int=1,
                                     centroid=centroid)
 
     # find the indices of the parameters we want to solve for 
-    mask = 1:(cub.numparams+cub.numweights)
+    # mask = 1:(cub.numparams+cub.numweights)
+    if mask ==[]
+        mask = 1:(cub.numparams+cub.numweights)
+    end
 
     # compute the number of parameters and weights
     numparams = cub.numparams
@@ -523,7 +530,9 @@ function deriveTetCubatureOmega(;q::Int=1,
                                 verbose::Bool=false,
                                 xinit_sym_group=[],
                                 xinit=[],
-                                T=Float64)
+                                mask=[],
+                                T=Float64,
+                                tol=5e-14)
 
     @assert(vertices==false && midedges==false && numedge==0, 
             numfaceS21==0 && numfaceS111==0 && facecentroid==false,
@@ -564,7 +573,7 @@ function deriveTetCubatureOmega(;q::Int=1,
             push!(xinit_sym_group,"centroid")
         end
     end
-    tol = 5e-14
+    
     vtx = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1]
     cub = SymCubatures.TetSymCub{T}(vertices=vertices, 
                                     numS31=numS31,
@@ -578,9 +587,12 @@ function deriveTetCubatureOmega(;q::Int=1,
                                     numS1111=numS1111,
                                     centroid=centroid)
     
-    # find the indices of the parameters we want to solve for 
-    mask = 1:(cub.numparams+cub.numweights)
-
+    # find the indices of the parameters we want to solve for
+    # mask = 1:(cub.numparams+cub.numweights) 
+    if mask==[]
+        mask = 1:(cub.numparams+cub.numweights)
+    end
+    
     # compute the number of parameters and weights
     numparams = cub.numparams
     numweights = cub.numweights
@@ -889,6 +901,8 @@ function deriveTetCubatureDiagE(;q::Int=1,
                                 xinit=[],
                                 xedge_sym_group=[],
                                 xedge=[],
+                                mask=[],
+                                tol=5e-15,
                                 T=Float64)
 
     if xinit_sym_group==[]
@@ -948,7 +962,6 @@ function deriveTetCubatureDiagE(;q::Int=1,
         end
     end
 
-    tol = 5e-14
     vtx = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1]
     cub = SymCubatures.TetSymCub{T}(vertices=vertices, 
                                     numS31=numS31,
@@ -963,8 +976,10 @@ function deriveTetCubatureDiagE(;q::Int=1,
                                     centroid=centroid)
     
     # find the indices of the parameters we want to solve for 
-    mask = SymCubatures.getInternalParamMask(cub)
-    append!(mask, (cub.numparams+1):(cub.numparams+cub.numweights)) 
+    if mask==[]
+        mask = SymCubatures.getInternalParamMask(cub)
+        append!(mask, (cub.numparams+1):(cub.numparams+cub.numweights)) 
+    end
 
     # compute the number of parameters and weights
     numparams = cub.numparams

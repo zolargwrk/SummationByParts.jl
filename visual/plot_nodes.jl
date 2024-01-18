@@ -103,7 +103,8 @@ This function plots quadruature data on the right tetrahedron using PlotlyJS.jl.
 * `save_fig`: indicates whether to save the plots or not
 
 """
-function plotly_tet_nodes(;q::Int=1,n::Int=-1,save_fig::Bool=false)
+function plotly_tet_nodes(;q::Int=1,x=[], n::Int=-1,vtx=[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1],
+                          save_fig::Bool=false)
     dir=""
     path_file=""
 
@@ -111,52 +112,80 @@ function plotly_tet_nodes(;q::Int=1,n::Int=-1,save_fig::Bool=false)
     current_dir = dirname(current_file_path)
     dir = joinpath(dirname(current_dir),"quadrature_data/tet/expanded/")
 
-    if n==-1
-        path_file = string("tet","_q$q")
-        
-        # Get a list of files in the directory
-        files = readdir(dir)
-        # Filter files based on the provided half name
-        matching_files = filter(x -> occursin(path_file, x), files)
-        
-        ns=[]
-        for i = 1:length(matching_files)
-            file_name = matching_files[i]
-            split_name = split(file_name,"_n")
-            split_name2 = split(split_name[2],"_")
-            push!(ns,parse(Int,split_name2[1]))
+    xvol = []
+    yvol = []
+    if x==[]
+        if n==-1
+            path_file = string("tet","_q$q")
+            
+            # Get a list of files in the directory
+            files = readdir(dir)
+            # Filter files based on the provided half name
+            matching_files = filter(x -> occursin(path_file, x), files)
+            
+            ns=[]
+            for i = 1:length(matching_files)
+                file_name = matching_files[i]
+                split_name = split(file_name,"_n")
+                split_name2 = split(split_name[2],"_")
+                push!(ns,parse(Int,split_name2[1]))
+            end
+            n = minimum(ns)
+            path_file = string("tet","_q$q","_n$n","_ext.txt")
+        else
+            path_file = string("tet","_q$q","_n$n","_ext.txt")
         end
-        n = minimum(ns)
-        path_file = string("tet","_q$q","_n$n","_ext.txt")
-    else
-        path_file = string("tet","_q$q","_n$n","_ext.txt")
-    end
-    path = joinpath(dir,path_file)
+        path = joinpath(dir,path_file)
 
-    lines = readdlm(path)
-    xvert = Array([-1,1,-1,-1,-1,-1,1,-1])
-    yvert = Array([-1,-1,1,-1,-1,1,-1,-1])
-    zvert = Array([-1,-1,-1,-1,1,-1,-1,1])
-    xvol = convert(Array{Float64},lines[5:n+4,1])
-    yvol = convert(Array{Float64},lines[5:n+4,2])
-    zvol = convert(Array{Float64},lines[5:n+4,3])
+        lines = readdlm(path)
+        # xvert = Array([-1,1,-1,-1,-1,-1,1,-1])
+        # yvert = Array([-1,-1,1,-1,-1,1,-1,-1])
+        # zvert = Array([-1,-1,-1,-1,1,-1,-1,1])
+        xvol = convert(Array{Float64},lines[5:n+4,1])
+        yvol = convert(Array{Float64},lines[5:n+4,2])
+        zvol = convert(Array{Float64},lines[5:n+4,3])
+    else
+        xvol = convert(Array{Float64},x[1,:])
+        yvol = convert(Array{Float64},x[2,:])
+        zvol = convert(Array{Float64},x[3,:])
+    end
+
+    xvert = Array(vcat([vtx[:,1],reverse(vtx[:,1])]...))
+    yvert = Array(vcat([vtx[:,2],reverse(vtx[:,2])]...))
+    zvert = Array(vcat([vtx[:,3],reverse(vtx[:,3])]...))
+
+    vtx_right = [-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1]
+    vtx_equilateral = vtx = [1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
 
     xfacet = []
     yfacet = []
     zfacet = []
-
-    for i = 1:length(xvol)
-        if (abs(xvol[i] + yvol[i] + zvol[i]+1.0) < 1e-13 || abs(xvol[i]+1.0)<1e-13 || abs(yvol[i]+1.0)<1e-13 || abs(zvol[i]+1.0)<1e-13)
-            push!(xfacet,xvol[i])
-            push!(yfacet,yvol[i])
-            push!(zfacet,zvol[i])
+    if norm(vtx .- vtx_right) <= 1e-13
+        for i = 1:length(xvol)
+            if (abs(xvol[i] + yvol[i] + zvol[i]+1.0) < 1e-13 || abs(xvol[i]+1.0)<1e-13 || abs(yvol[i]+1.0)<1e-13 || abs(zvol[i]+1.0)<1e-13)
+                push!(xfacet,xvol[i])
+                push!(yfacet,yvol[i])
+                push!(zfacet,zvol[i])
+            end
+        end
+    elseif norm(vtx .- vtx_equilateral) <= 1e-13
+        for i = 1:length(xvol)
+            if (abs(-4*sqrt(6)/3*yvol[i] + 2/sqrt(3)*zvol[i]-sqrt(2)) < 1e-13 || 
+                abs(2*sqrt(2)*xvol[i]-2*sqrt(6)/3*yvol[i]-2/sqrt(3)*zvol[i]+sqrt(2))<1e-13 || 
+                abs(2*sqrt(2)*xvol[i]+2*sqrt(6)/3*yvol[i]+2/sqrt(3)*zvol[i]-sqrt(2))<1e-13 ||
+                abs(zvol[i]+sqrt(6)/6)<1e-13) 
+                push!(xfacet,xvol[i])
+                push!(yfacet,yvol[i])
+                push!(zfacet,zvol[i])
+            end
         end
     end
     
-    vertices = [[-1.0, -1.0, -1.0], 
-                [1.0, -1.0, -1.0],  
-                [-1.0, 1.0, -1.0],
-                [-1.0, -1.0, 1.0]]
+    # vertices = [[-1.0, -1.0, -1.0], 
+    #             [1.0, -1.0, -1.0],  
+    #             [-1.0, 1.0, -1.0],
+    #             [-1.0, -1.0, 1.0]]
+    vertices = [vec(row) for row in eachrow(vtx)]
 
     # Define the faces of the tetrahedron (as indices of vertices)
     faces = [[1, 2, 3],
@@ -167,7 +196,7 @@ function plotly_tet_nodes(;q::Int=1,n::Int=-1,save_fig::Bool=false)
     # Define colors for each face
     colors = ["yellow", "rgba(0,0,0,0)", "blue", "green"] #"rgba(0,0,0,0)"
     # colors = ["gray", "rgba(0,0,0,0)", "blue", "gray"] #"rgba(0,0,0,0)"
-    traces = mesh3d(x=[v[1] for v in vertices],
+    traces = PlotlyJS.mesh3d(x=[v[1] for v in vertices],
                     y=[v[2] for v in vertices],
                     z=[v[3] for v in vertices],
                     i=[f[1] - 1 for f in faces],  # Adjust indices to start from 0
@@ -213,16 +242,17 @@ function plotly_tet_nodes(;q::Int=1,n::Int=-1,save_fig::Bool=false)
     # traces = [trace1, trace2, trace3, trace4]
     #----------------
 
-    p_vert = scatter(x=xvert, y=yvert, z=zvert, type="scatter3d", mode="lines", line_color="black", line_width=2)
-    p_vol_nodes = scatter(x=xvol, y=yvol, z=zvol, type="scatter3d", mode="markers", 
+    p_vert = PlotlyJS.scatter(x=xvert, y=yvert, z=zvert, type="scatter3d", mode="lines", line_color="black", line_width=2)
+    p_vol_nodes = PlotlyJS.scatter(x=xvol, y=yvol, z=zvol, type="scatter3d", mode="markers", 
                           marker=attr(color="black",size=4,symbol="circle"))
-    p_facet_nodes = scatter(x=xfacet, y=yfacet, z=zfacet, type="scatter3d", mode="markers", 
+    p_facet_nodes = PlotlyJS.scatter(x=xfacet, y=yfacet, z=zfacet, type="scatter3d", mode="markers", 
                             marker=attr(color="red",size=5,symbol="circle-open"))
-    layout = Layout(scene = attr(template="simple_white",xaxis_visible=false,yaxis_visible=false,zaxis_visible=false,       
+    layout = Layout(scene = attr(template="simple_white",xaxis_visible=true,yaxis_visible=true,zaxis_visible=true,       
                             showlegend=false), showlegend=false)
 
     # p = plot([p_vert,p_vol_nodes,p_facet_nodes, trace1, trace2, trace3, trace4],layout)
-    p = plot([p_vert,p_vol_nodes,p_facet_nodes,traces],layout)
+    p = PlotlyJS.plot([p_vert,p_vol_nodes,p_facet_nodes,traces],layout)
+    # p = PlotlyJS.plot([p_vert,p_vol_nodes,p_facet_nodes],layout)
     camera = attr(eye=attr(x=1.5, y=-1.5, z=0.2))
     relayout!(p, scene_camera=camera)
     
@@ -233,7 +263,7 @@ function plotly_tet_nodes(;q::Int=1,n::Int=-1,save_fig::Bool=false)
         file_name = string("tet","_q$q","_n$n",".png")
         file= joinpath(path,file_name)
         # savefig(p,file)
-        savefig(p,file,width=3000,height=3000,scale=4)
+        PlotlyJS.savefig(p,file,width=3000,height=3000,scale=4)
     end
 
     return 

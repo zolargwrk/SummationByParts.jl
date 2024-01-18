@@ -160,7 +160,7 @@ function jacobipoly(x::Array{T}, alpha::AbstractFloat, beta::AbstractFloat,
                             ((h1+1)*(h1+3)))
     bnew = -(alpha^2 - beta^2)/(h1*(h1+2))
     save = P_1
-    P_1 = (1/anew).*(-aold.*P_0 + (x .- bnew).*P_1)
+    P_1 = (1/anew).*(-aold.*P_0 .+ (x .- bnew).*P_1)
     P_0 = save
     aold = anew
   end
@@ -271,6 +271,10 @@ function proriolpoly(x::Array{T}, y::Array{T}, z::Array{T}, i::Int, j::Int,
     y[m]+z[m] != 0.0 ? xi[m] = -2.0*(1+x[m])./(y[m]+z[m]) - 1 : xi[m] = -1
     z[m] != 1.0 ? eta[m] = 2.0*(1+y[m])./(1-z[m]) - 1 : eta[m] = -1
   end
+
+  # xi = -1 .+ (-2 * (1 .+ x) ./ (y .+ z)) .* (y .+ z .!= 0.0)
+  # eta = -1 .+ (2 * (1 .+ y) ./ (1 .- z)) .* (z .!= 1.0)
+
   P = sqrt(8).*jacobipoly(xi, 0.0, 0.0, i).*
     jacobipoly(eta, convert(AbstractFloat, 2*i+1), 0.0, j).*((1 .- eta).^(i)).*
     jacobipoly(z, convert(AbstractFloat, 2*i+2*j+2), 0.0, k).*((1 .- z).^(i+j))
@@ -390,6 +394,27 @@ Evaluate the Vandermonde matrix using the Proriol polynomials on the right trian
 * `Vdx`,`Vdy`: derivatives of the Vandermonde matrix at (`x`,`y`)
 
 """
+function vandermonde(p::Int, x::Array{T}; compute_grad::Bool=true) where {T}
+  nnodes = length(x)
+  num_eq = convert(Int, (p+1))
+
+  # loop over orthogonal polynomials of degree r <= p 
+  V = zeros(T, (nnodes, num_eq))
+  Vdx = zeros(T, (nnodes, num_eq))
+  # loop over orthogonal polynomials of degree r <= q and form conditions
+  ptr = 1
+  for r = 0:p
+    P = OrthoPoly.jacobipoly(vec(x), 0.0, 0.0, r)
+    V[:,ptr] = P
+    if compute_grad
+      dPdx = OrthoPoly.diffjacobipoly(vec(x), 0.0, 0.0, r)
+      Vdx[:,ptr] = dPdx
+    end
+    ptr += 1
+  end
+return V, Vdx
+end
+
 function vandermonde(p::Int, x::Array{T}, y::Array{T}; compute_grad::Bool=true) where {T}
   nnodes = length(x)
   num_eq = convert(Int, (p+1)*(p+2)/2)

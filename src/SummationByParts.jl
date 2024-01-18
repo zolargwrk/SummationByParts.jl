@@ -25,8 +25,10 @@ include("compile_time.jl")
 include("face_types.jl")
 include("orthopoly.jl")
 include("symcubatures.jl")
+include("asymcubatures.jl")
 include("optimizer.jl")
 include("cubature.jl")
+include("cubatureb.jl")
 include("../quadrature_data/write_quad_file.jl")
 include("../visual/plot_nodes.jl")
 include("../visual/plot_nodes_web.jl")
@@ -34,6 +36,8 @@ include("../visual/plot_nodes_web.jl")
 using .OrthoPoly
 using .SymCubatures
 using .Cubature
+using .AsymCubatures
+using .CubatureB
 using .Optimizer
 
 export AbstractSBP
@@ -41,8 +45,8 @@ export LineSegSBP
 export TriSBP, SparseTriSBP
 export TetSBP, SparseTetSBP
 export getLineSegSBPLobbato, getLineSegSBPLegendre
-export getTriSBPGamma, getTriSBPOmega, getTriSBPDiagE, getTriCubatureForTetFaceDiagE
-export getTetSBPGamma, getTetSBPOmega, getTetSBPDiagE
+export getTriSBPGamma, getTriSBPOmega, getTriSBPDiagE, getTriCubatureForTetFaceDiagE, getTriSBPOmegaLG
+export getTetSBPGamma, getTetSBPOmega, getTetSBPDiagE, getTetSBPDiagELGL, getTetSBPOmegaLG
 export AbstractFace
 export DenseFace, LineSegFace, TriFace, TetFace
 export SparseFace, TriSparseFace, TetSparseFace

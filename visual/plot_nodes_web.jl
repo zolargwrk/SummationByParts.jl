@@ -14,7 +14,7 @@ This function plots quadruature data on the right triangle using Plot.jl.
 * `x`: the quadrature points in Cartesian coordinates
 
 """
-function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[],vtx=[-1 -1; 1 -1; -1 1],save_dir::String="",write_title=false)
+function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[],vtx=[-1 -1; 1 -1; -1 1],save_dir::String="",write_title=false,label_nodes=false)
     dir=""
     path_file=""
 
@@ -65,6 +65,7 @@ function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[],vtx=[-1
     yfacet = []
     vtx_right = [-1 -1; 1 -1; -1 1]
     vtx_equilateral = [0 0; 1 0; 1/2 sqrt(3/4)]
+    vtx_equilateral_big = [-1 -1/sqrt(3); 1 -1/sqrt(3); 0 2/sqrt(3)] #[-1 1-sqrt(3); 1 1-sqrt(3); 0 1] #[-1 -1; 1 -1; 0 sqrt(3)-1]
     legendpos = :topright
 
     if norm(vtx .- vtx_equilateral) <= 1e-13
@@ -75,7 +76,7 @@ function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[],vtx=[-1
             end
         end
         legendpos = :topright
-    else norm(vtx .- vtx_right) <= 1e-13
+    elseif norm(vtx .- vtx_right) <= 1e-13
         for i in eachindex(xvol)
             if (abs(xvol[i] + yvol[i]-0.0) < 1e-13 || abs(xvol[i]+1.0)<1e-13 || abs(yvol[i]+1.0)<1e-13)
                 push!(xfacet,xvol[i])
@@ -83,12 +84,26 @@ function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[],vtx=[-1
             end
         end
         legendpos = :top
+    elseif norm(vtx .- vtx_equilateral_big) <= 1e-13
+        for i in eachindex(xvol)
+            # if (abs(yvol[i]+1.0) < 1e-13 || abs(yvol[i]-sqrt(3)*(1-xvol[i])+1)<1e-13 
+            #     || abs(yvol[i]-sqrt(3)*(xvol[i]+1)+1)<1e-13)
+            if (abs(yvol[i]+1.0/sqrt(3)) < 1e-13 || 
+                abs(yvol[i]+sqrt(3)*xvol[i]-sqrt(3)+1/sqrt(3))<1e-13 || 
+                abs(yvol[i]-sqrt(3)*xvol[i]-sqrt(3)+1/sqrt(3))<1e-13)
+                push!(xfacet,xvol[i])
+                push!(yfacet,yvol[i])
+            end
+        end
+        legendpos = :topright
     end
 
     Plots.plot(xvert,yvert, seriestype=:path, linestyle=:solid, lc="black", lw=1.5, label="")
     Plots.scatter!(xvol,yvol,m = (3.5, :black),label="volume nodes")
-    for i in eachindex(xvol)
-        annotate!(xvol[i]-0.01,yvol[i]+0.02,Plots.text("$i", :blue,:right, 10))
+    if label_nodes
+        for i in eachindex(xvol)
+            annotate!(xvol[i]-0.01,yvol[i]+0.02,Plots.text("$i", :blue,:right, 12))
+        end
     end
     label_facet=""
     if xfacet!=[]
@@ -100,7 +115,7 @@ function plot_tri_nodes(;q::Int=1,n::Int=-1,facet_type::String="lg",x=[],vtx=[-1
     end
     p=Plots.scatter!(xfacet, yfacet; #aspect_ratio=:equal, grid=false,  xaxis=false, yaxis=false,
     ms=4.5, markercolor=:transparent, markerstrokecolor=:red, markerstrokewidth = 2,  label=label_facet, 
-    legend=true, legendposition=legendpos, legendfontsize=8, title=title, titleposition=:right, framestyle = :box)
+    legend=true, legendposition=legendpos, legendfontsize=10, title=title, titleposition=:right, framestyle = :box)
 
     if save_dir != ""
         path = save_dir
