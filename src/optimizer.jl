@@ -942,36 +942,6 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         # update cubature definition and check for convergence
         v += dv
 
-        SymCubatures.setparams!(cub, v[1:cub.numparams])
-        SymCubatures.setweights!(cub, v[cub.numparams+1:end])
-        F, dF = fun(cub, q, compute_grad=true)
-        res = norm(F)
-        # print(res)
-        # verbose==1 ? print("\titer ",k,": res norm = ",res,"\n") : nothing
-
-        iter_show = 1
-        if verbose==1
-            if mod(k,iter_show)==0
-                print("\titer ",k,": res norm = ",res,"\n")
-            end
-        end
-
-        if res < tol
-            return res, v, k
-        end
-
-        # trust-region like update
-        if res > res_old
-            v -= dv
-            SymCubatures.setparams!(cub, v[1:cub.numparams])
-            SymCubatures.setweights!(cub, v[cub.numparams+1:end])
-            F, dF = fun(cub, q, compute_grad=true)
-            nu *= 2.0
-        else
-            nu /= 2.0
-            res_old = res
-        end
-
         eps = 1e-6
         for i=1:length(axes(v,1))
             if v[i]<xL
@@ -984,62 +954,6 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
                 v += alpha*dv
             end
         end
-
-        # #--------
-        # if typeof(cub)==TetSymCub{T}
-        #     vg = copy(v[1:cub.numparams])
-        #     ng = 0
-        #     vS31 = vg[1:cub.numS31]
-        #     maxv = 0.0
-        #     for i = 1:length(vS31)                
-        #         if (v[ng+i]/3 >= 1.0 && v[ng+i]/3>maxv)
-        #             v -= alpha*dv
-        #             alpha = ((1/3-eps)-v[ng+i])/(dv[ng+i])
-        #             v += alpha*dv
-        #             maxv = v[ng+i]/3
-        #             println("=====================")
-        #         end
-        #     end
-        #     ng+=cub.numS31 
-
-        #     vS22 = vg[ng+1:ng+cub.numS22]
-        #     maxv = 0.0
-        #     for i = 1:length(vS22)
-        #         if (v[ng+i]/2 >= 1.0 && v[ng+i]/2>maxv)
-        #             v -= alpha*dv
-        #             alpha = ((1/2-eps)-v[ng+i])/(dv[ng+i])
-        #             v += alpha*dv
-        #             maxv = v[ng+i]/2
-        #             println("=====================S22==================")
-        #         end
-        #     end
-        #     ng+=cub.numS22 
-
-        #     vS211 = vg[ng+1:ng+2*cub.numS211]
-        #     maxv = 0.0
-        #     for i = 1:2:length(vS211)
-        #         if ((v[ng+i]+v[ng+i+1])/2 >= 1.0 && (v[ng+i]+v[ng+i+1])/2>maxv)
-        #             v -= alpha*dv
-        #             alpha = ((v[ng+i]-eps)-v[ng+i])/(dv[ng+i])
-        #             v += alpha*dv
-        #             maxv = (v[ng+i]+v[ng+i+1])/2
-        #             println("=====================S211==================")
-        #         end
-        #     end
-        #     ng+=2*cub.numS211 
-
-        #     vS1111 = vg[ng+1:ng+3*cub.numS1111] 
-        #     maxv = 0.0
-        #     for i = 1:3:length(vS1111)
-        #         if ((v[ng+i]+v[ng+i+1]+v[ng+i+2])/2 >= 1.0 && (v[ng+i]+v[ng+i+1]+v[ng+i+2])/2>maxv)
-        #             v -= alpha*dv
-        #             alpha = ((v[ng+i]-eps)-v[ng+i])/(dv[ng+i])
-        #             v += alpha*dv
-        #             maxv = v[ng+i]/2
-        #             println("=====================S1111==================")
-        #         end
-        #     end     
-        # end
 
         if typeof(cub)==TetSymCub{T}
             vg = copy(v[1:cub.numparams])
@@ -1100,79 +1014,38 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
             end     
         end
 
-        # if typeof(cub)==TetSymCub{T}
-        #     vg = copy(v[1:cub.numparams])
-        #     ng = 0
-        #     eps_sym = 1e-6
-        #     vS31 = vg[1:cub.numS31]
-        #     for i = 1:length(vS31)                
-        #         if (v[ng+i]/3 >= 1.0)
-        #             v[ng+i] -= alpha*dv[ng+i]
-        #             while (v[ng+i]/3 >= 1.0)
-        #                 v[ng+i] -= eps_sym
-        #             end
-        #             println("=====================")
-        #         end
-        #     end
-        #     ng+=cub.numS31 
+        SymCubatures.setparams!(cub, v[1:cub.numparams])
+        SymCubatures.setweights!(cub, v[cub.numparams+1:end])
+        F, dF = fun(cub, q, compute_grad=true)
+        res = norm(F)
+        # print(res)
+        # verbose==1 ? print("\titer ",k,": res norm = ",res,"\n") : nothing
 
-        #     vS22 = vg[ng+1:ng+cub.numS22]
-        #     for i = 1:length(vS22)
-        #         if (v[ng+i]/2 >= 1.0)
-        #             v[ng+i] -= alpha*dv[ng+i]
-        #             while (v[ng+i]/2 >= 1.0)
-        #                 v[ng+i] -= eps_sym
-        #             end
-        #             println("=====================S22==================")
-        #         end
-        #     end
-        #     ng+=cub.numS22 
+        iter_show = 1
+        if verbose==1
+            if mod(k,iter_show)==0 
+                print("\titer ",k,": res norm = ",res,"\n")
+            end
+        end
 
-        #     vS211 = vg[ng+1:ng+2*cub.numS211]
-        #     for i = 1:2:length(vS211)
-        #         if ((v[ng+i]+v[ng+i+1])/2 >= 1.0)
-        #             v[ng+i] -= alpha*dv[ng+i]
-        #             v[ng+i+1] -= alpha*dv[ng+i+1]
-        #             while ((v[ng+i]+v[ng+i+1])/2 >= 1.0)
-        #                 v[ng+i] -= eps_sym
-        #                 v[ng+i+1] -= eps_sym
-        #             end
-        #             println("=====================S211==================")
-        #         end
-        #     end
-        #     ng+=2*cub.numS211 
+        if res < tol
+            return res, v, k
+        end
 
-        #     vS1111 = vg[ng+1:ng+3*cub.numS1111] 
-        #     for i = 1:3:length(vS1111)
-        #         if ((v[ng+i]+v[ng+i+1]+v[ng+i+2])/2 >= 1.0)
-        #             v[ng+i] -= alpha*dv[ng+i]
-        #             v[ng+i+1] -= alpha*dv[ng+i+1]
-        #             v[ng+i+2] -= alpha*dv[ng+i+2]
-        #             while ((v[ng+i]+v[ng+i+1]+v[ng+i+2])/2 >= 1.0)
-        #                 v[ng+i] -= eps_sym
-        #                 v[ng+i+1] -= eps_sym
-        #                 v[ng+i+2] -= eps_sym
-        #             end
-        #             println("=====================S1111==================")
-        #         end
-        #     end     
-        # end
-        #------------
+        # trust-region like update
+        if res > res_old
+            v -= dv
+            SymCubatures.setparams!(cub, v[1:cub.numparams])
+            SymCubatures.setweights!(cub, v[cub.numparams+1:end])
+            F, dF = fun(cub, q, compute_grad=true)
+            nu *= 2.0
+        else
+            nu /= 2.0
+            res_old = res
+        end
         alpha=1.0
         iter+=1
 
-        # for i=1:5
-        #     if v[i]<0.01
-        #         v -= alpha*dv
-        #         alpha = (eps - v[i])/(dv[i])
-        #         v += alpha*dv
-        #     elseif v[i]>0.655
-        #         v -= alpha*dv
-        #         alpha = ((0.655-eps) - v[i])/(dv[i])
-        #         v += alpha*dv
-        #     end
-        # end
-        
         # if mod(iter,100)==0
         #     println(v)
         # end

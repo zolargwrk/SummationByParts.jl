@@ -3,7 +3,7 @@ using SummationByParts
 using SummationByParts.Cubature
 using SummationByParts.OrthoPoly
 using DataStructures
-using SymPy
+#using SymPy
 
 # This file gathers together functions used to build the SBP operators
 
@@ -3402,12 +3402,12 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
         xy_sym = xy[:,idx]
 
         # compute the Vandermonde matrix
-        V, _,_,_= OrthoPoly.vandermonde(p, xy_sym[1,:],xy_sym[2,:],xy_sym[3,:],compute_grad=false)
+        # V, _,_,_= OrthoPoly.vandermonde(p, xy_sym[1,:],xy_sym[2,:],xy_sym[3,:],compute_grad=false)
         # V, _,_,_ = OrthoPoly.vandermonde_monomial(p, xy_sym[1,:],xy_sym[2,:],compute_grad=false,compute_integ=false)
         # V, _,_,_= OrthoPoly.vandermonde_arnoldi(p, xy_sym[1,:],xy_sym[2,:],compute_grad=false)
-        V2 = V.^2*ones(size(V,2),1)
+        # V2 = V.^2*ones(size(V,2),1)
         # V2 = abs.(V)*ones(size(V,2),1)
-        w = SymCubatures.calcweights(cub)
+        # w = SymCubatures.calcweights(cub)
         # s = sortperm(vec(diagm(w[idx])*V2),rev=false)
         # s = sortperm(vec(diagm(w[idx])*V2),rev=true)
         # s = sortperm(vec(V2),rev=false)
@@ -3472,43 +3472,51 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
             mask = Int[]
             append!(mask, 1:cub2.numparams+cub2.numweights) 
             # res = Cubature.solvecubature!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  xinit=xinit, delta1=1e-6, delta2=1e-6)
-            res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=60, xinit=xinit, delta1=1e-1, delta2=1e-1)
-            println("\n", cub2.params,"\n")
-            println(cub2.weights,"\n")
-            println("j = ", j, ":  n = ", n, ":  numnodes = ", cub.numnodes)
+            res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, delta1=1e-1, delta2=1e-1)
 
-            if res < 5e-2 && res > 5e-3
+            res_old=copy(res)
+            if res > 5e-14
                 xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                # xinit = (1.0 .-rand(size(xinit))*0.05).*xinit
-                # res = Cubature.solvecubature!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  xinit=xinit, delta1=1e-4, delta2=1e-4)
-                res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=75, xinit=xinit, delta1=1e-4, delta2=1e-4)
+                res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=20, xinit=xinit, delta1=1e-4, delta2=1e-4)
             end
-            if res <= 5e-3 && res > 5e-14
-                xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-11, hist=true, verbose=true,  maxiter=150, xinit=xinit, delta1=1e-4, delta2=1e-4)
+            res_ratio=res/res_old 
+            res_old=res
+            for i=1:200
+                if ((res_ratio <= 9e-1 && res > 1e-2) || (res_ratio <= 9.99e-1 && res < 1e-2 && res > 1e-10))
+                    xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                    res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, delta1=1e-4, delta2=1e-4)
+                    res_ratio=res/res_old 
+                    res_old=res
+                end
             end
-
+            
             j+=1
-            if res < 1e-10
+            if res <= 1e-10
                 n = cub2.numweights 
                 # j = 1
                 j -= 1
                 cub = cub2
                 res_min = res
             end
+            println("\n", cub2.params,"\n")
+            println(cub2.weights,"\n")
+            println(cub2,"\n")
+            println("j = ", j, ":  n = ", n, ":  numnodes = ", cub.numnodes)
         else
             break 
         end
     end
     println("--------------------------")
     if res_min==-1.0
-        print("No new solution was found.")
         println("\n", cub.params,"\n")
         println(cub.weights,"\n")
+        println(cub,"\n")
+        print("\n","No new solution was found.","\n")
     else
         println("res norm = ", res_min)
         println("\n", cub.params,"\n")
         println(cub.weights,"\n")
+        println(cub,"\n")
     end
     return cub, res_min
 end 

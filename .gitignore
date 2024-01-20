@@ -31,3 +31,5 @@
 examples/.ipynb_checkpoints
 #src/minimizenodes.jl
 src/tet_omega_lg.dat
+minnodes/*
+preload.jl

@@ -3,7 +3,7 @@
 using Printf
 using LinearAlgebra
 using Random
-using RowEchelon
+#using RowEchelon
 
 """
 ### SummationByParts.getNumFaceNodes

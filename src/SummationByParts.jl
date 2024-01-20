@@ -1,8 +1,8 @@
-__precompile__(false)
+__precompile__(true)
 module SummationByParts
 
-using Optim
-using LineSearches
+#using Optim
+#using LineSearches
 #using ArrayViews
 #using ODLCommonTools
 #import ODLCommonTools.sview

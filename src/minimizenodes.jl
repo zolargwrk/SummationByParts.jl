@@ -1,3 +1,7 @@
+if !("/home/z/zingg/workuzel/SummationByPartsPrivate/src/" in LOAD_PATH)
+    push!(LOAD_PATH, "/home/z/zingg/workuzel/SummationByPartsPrivate/src/") 
+end
+ENV["JULIA_NUM_THREADS"] = "40"
 using SummationByParts
 using SummationByParts.OrthoPoly
 using SummationByParts.Cubature
@@ -7,7 +11,7 @@ using SummationByParts.AsymCubatures
 using SummationByParts.Optimizer
 using LinearAlgebra
 using Random
-using PlotlyJS
+# using PlotlyJS
 using DelimitedFiles
 using Latexify
 
@@ -1741,11 +1745,11 @@ vtx = T[-1 -1/sqrt(3); 1 -1/sqrt(3); 0 2/sqrt(3)]
 
 #----------------
 function get_tet_omega_lg()
-    for i=11:20
+    for i=12:20
         for j=1:-1:0
             p = i
             q = 2*p-j
-            qq = 2*p-2
+            qq = 2*p-j
             T = Float64
             vtx = [1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
 
@@ -1756,9 +1760,9 @@ function get_tet_omega_lg()
             # cub = SummationByParts.eliminate_nodes(cub, p, q)
 
             xyz = SymCubatures.calcnodes(cub,vtx)
-            SummationByParts.plotly_tet_nodes(q=q, x=xyz, vtx=vtx)
-
-            dir =  joinpath(pwd(), "src/")
+            # SummationByParts.plotly_tet_nodes(q=q, x=xyz, vtx=vtx)
+            dir = "/project/z/zingg/workuzel/quadrature/"
+            # dir =  joinpath(pwd(), "src/")
             file = joinpath(dir,"tet_omega_lg.dat")
 
             open(file, "a") do io 
