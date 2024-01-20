@@ -3634,3 +3634,57 @@ function combine_tet_cubs(cuba::TetSymCub{T}, cubb::TetSymCub{T}) where {T}
 
     return cub2
 end
+
+function minnodes_bound_omega(d::Int)
+    d12 = d - 12
+    mp3 = Int(round(((d12+4)^3 + 3*(d12+4)^2 - 9*(d12+4)*mod(d12+4,2))/144))*iverson(d12,0)
+    me = Int(round(((d+4)^3 + 3*(d+4)^2 - 9*(d+4)*mod(d+4,2))/144))*iverson(d,0)
+    mp2 = Int(round((d+3)^2/12))*iverson(d,0)
+    mp1 = Int(floor((d+2)/2))*iverson(d,0)
+    mp0 = iverson(d,0)
+    m4 = mp3
+    m3 = Int(floor((d/2-2)^2))*iverson(d,6)
+    m2 = Int(floor(d/2-1))*iverson(d,4)
+    m1 = (d-2)*iverson(d,2)
+    m12 = iverson(d,2)
+    m0 = 1
+
+    n4 = Int(ceil(m4/4))
+    n3 = Int(ceil((m4+m3 - 4*n4)/3))
+    n2 = Int(ceil((m4+m3+m2-3*n3-4*n4)/2))
+    n1 = Int(floor((me-2*n2-3*n3-4*n4)/2))
+    n0 = me - 2*n1 - 2*n2 - 3*n3 - 4*n4
+
+    n = n0 + 4*n1 + 6*n2 + 12*n3 + 24*n4
+
+    # println("m0=", m0, ": m12=", m12, ": m1=", m1, ": m2=", m2, ": m3=", m3, ": m4=", m4, ": me=", me)
+    println("[", n0,",",n1,",",n2,",",n3,",",n4,"]")
+    return n
+end
+
+function iverson(d::Int, a::Int)
+    if d >= a 
+        return 1
+    else
+        return 0
+    end
+end
+
+function numnodes_omega_lg(q::Int)
+    p = Int(ceil(q/2))
+    ne=p+1
+    numedge=Int((ne-mod(ne,2))/2)
+    numS31=n1=Int((1+mod(ne,2))*numedge)
+    numS22 =n2= Int(mod(ne,2)*numedge)
+    numS211=n3= Int((1+2*mod(ne,2))/(1+mod(ne,2))*(numedge*(numedge-1)))
+    numS1111=n4=Int(1/6*((numedge-1)^3-(numedge-1)))
+    centroid=n0= mod(ne,2)
+
+    n = centroid + 4*numS31 + 6*numS22 + 12*numS211 + 24*numS1111
+    println("[", n0,",",n1,",",n2,",",n3,",",n4,"]")
+    
+    nmin = minnodes_bound_omega(q)
+    r= n/nmin
+    println("ratio = ", r)
+    return n
+end
