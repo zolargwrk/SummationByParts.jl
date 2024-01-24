@@ -3355,14 +3355,14 @@ function eliminate_nodes(cub::TriSymCub{T}, p::Int, q::Int) where {T}
             if (k<=2)
                 nmin,sym_min = minnodes_bound_omega_tri(q)
                 sym_cnt = 0
-                ii=j-convert(Int,cub.centroid)
+                ii=j #-convert(Int,cub.centroid)
                 sym_cnt=cub.numweights
-                # if cub.centroid && sym_min[1]==0 && sym_cnt-convert(Int,cub.centroid) < j <= sym_cnt
-                #     ii = j 
-                #     println("was here ------- centroid")
-                # elseif sym_cnt- convert(Int,cub.centroid) < j <= sym_cnt 
-                #     j = sym_cnt - convert(Int,cub.centroid)
-                # end
+                if cub.centroid && sym_min[1]==0 && sym_cnt-convert(Int,cub.centroid) < j <= sym_cnt
+                    ii = j 
+                    println("was here ------- centroid")
+                elseif sym_cnt- convert(Int,cub.centroid) < j <= sym_cnt 
+                    j = sym_cnt - convert(Int,cub.centroid)
+                end
                 sym_cnt -= convert(Int,cub.centroid)
 
                 if cub.numS111 > sym_min[3] && sym_cnt-cub.numS111 < j <= sym_cnt
@@ -3400,7 +3400,12 @@ function eliminate_nodes(cub::TriSymCub{T}, p::Int, q::Int) where {T}
                 splice!(params, param_idx[ii]) 
             end
             weights = copy(cub.weights)
-            splice!(weights, weight_idx[ii]) 
+            if sg=="centroid" && k<=0
+                # don't splice
+                push!(sym_group,"centroid")
+            else
+                splice!(weights, weight_idx[ii]) 
+            end
             cub2 = SymCubatures.TriSymCub{T}(vertices=convert(Bool,count(x -> x == "vertices", sym_group)),
                                         midedges=convert(Bool,count(x -> x == "midedges", sym_group)),
                                         numS21=count(x -> x == "S21", sym_group),
@@ -3422,19 +3427,19 @@ function eliminate_nodes(cub::TriSymCub{T}, p::Int, q::Int) where {T}
                 res_old=copy(res)
                 if res > 5e-14 && res < 1e4
                     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                    res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit)
+                    res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-12, hist=true, verbose=true,  maxiter=10, xinit=xinit)
                 end
 
                 # kk = 0
-                for i=1:10000
-                    if ((res_old-res)/res_old>1e-2 && res>1e-8 && res <1e4)
-                    # if (kk<=2 && res>1e-8 && res <1e4)
+                for i=1:200
+                    if ((res_old-res)/res_old>1e-2 && res>5e-5 && res <1e4)
                         res_old=res
                         xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
                         res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit)
-                        # if (res_old-res)/res_old <1e-2
-                        #     kk += 1
-                        # end
+                    end
+                    if (res<5e-5 && res>1e-8)
+                        xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                        res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit)
                     end
                 end
                 
