@@ -912,6 +912,7 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         v = xinit
     end
 
+    v_old = copy(v)
     alpha = 1.0
     res_lst = []
     iter_break = 1000
@@ -927,8 +928,8 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         # solve only for those parameters and weights that are in mask
         fill!(dv, zero(T))
         Hred = H[mask,mask]
-        # dv[mask] = Hred\(g[mask])
-        dv[mask] = pinv(Hred,1e-14)*g[mask]
+        dv[mask] = Hred\(g[mask])
+        # dv[mask] = pinv(Hred,1e-14)*g[mask]
         # U,S,Vt=svd(Hred,full=true,alg=LinearAlgebra.QRIteration())
         # invS = zeros(length(S),length(S))
         # for i=1:length(axes(S,1))
@@ -953,6 +954,36 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
                 alpha = ((xR-eps) - v[i])/(dv[i])
                 v += alpha*dv
             end
+        end
+
+        if typeof(cub)==TriSymCub{T}
+            vg = copy(v[1:cub.numparams])
+            ng = 0
+            vS21 = vg[1:cub.numS21]
+            for i = 1:length(vS21)                
+                if (v[ng+i] >= 1.0)
+                    alphaS21 = copy(alpha)
+                    while (v[ng+i] >= 1.0 && alphaS21>0)
+                        v -= alphaS21*dv
+                        alphaS21 = 0.5*alphaS21
+                        v += alphaS21*dv
+                    end
+                end
+            end
+            ng+=cub.numS21 
+
+            vS111 = vg[ng+1:ng+cub.numS111]
+            for i = 1:length(vS111)
+                if ((v[ng+i]+v[ng+i+1])/2 >= 1.0)
+                    alphaS111 = copy(alpha)
+                    while ((v[ng+i]+v[ng+i+1])/2 >= 1.0 && alphaS111>0)
+                        v -= alphaS111*dv
+                        alphaS111 = 0.5*alphaS111 
+                        v += alphaS111*dv
+                    end
+                end
+            end
+            ng+=cub.numS111  
         end
 
         if typeof(cub)==TetSymCub{T}
@@ -1028,8 +1059,12 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
             end
         end
 
-        if res < tol
+        if res < tol 
             return res, v, k
+        end
+
+        if (res > 1e3 || isnan(res))
+            return res_old, v_old, 0
         end
 
         # trust-region like update
@@ -1038,9 +1073,9 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
             SymCubatures.setparams!(cub, v[1:cub.numparams])
             SymCubatures.setweights!(cub, v[cub.numparams+1:end])
             F, dF = fun(cub, q, compute_grad=true)
-            nu *= 2.0
+            nu *= 5.0
         else
-            nu /= 2.0
+            nu /= 5.0
             res_old = res
         end
         alpha=1.0
