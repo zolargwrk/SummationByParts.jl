@@ -475,9 +475,11 @@ function vandermonde(p::Int, x::Array{T}, y::Array{T}, z::Array{T}; compute_grad
         V[:,ptr] = P
         if compute_grad
           dPdx, dPdy, dPdz = OrthoPoly.diffproriolpoly(x, y, z, i, j, k)
-          Vdx[:,ptr] = dPdx
-          Vdy[:,ptr] = dPdy
-          Vdz[:,ptr] = dPdz
+          if !(any(isnan, dPdx) || any(isnan, dPdy) || any(isnan, dPdz))
+            Vdx[:,ptr] = dPdx
+            Vdy[:,ptr] = dPdy
+            Vdz[:,ptr] = dPdz
+          end
         end
         ptr += 1
       end
