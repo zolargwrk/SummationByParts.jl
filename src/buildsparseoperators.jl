@@ -1063,13 +1063,13 @@ function init_tri_nodes_omega(p::Int, q::Int; ne::Int=-1, T=Float64)
     # SummationByParts.plot_tri_nodes(x=xy, vtx=vtx, q=q, n=cub.numnodes,write_title=true,label_nodes=false)
     # println(params)
     # println(weights)
-    cub, _ = SummationByParts.Cubature.getTriCubatureOmegaLG(q-1)
+    # cub, _ = SummationByParts.Cubature.getTriCubatureOmegaLG(q-1)
 
     xinit = convert.(T,collect(Iterators.flatten([cub.params,cub.weights])))
     mask = Int[]
     append!(mask, 1:cub.numparams+cub.numweights) 
     # Cubature.solvecubature!(cub, q, mask, tol=5e-14, hist=true, verbose=true, xinit=xinit, delta1=1e-4, delta2=1e-4)
-    res = Cubature.solvecubaturelma!(cub, q, mask, tol=5e-14, maxiter=1000, hist=true, verbose=true, xinit=xinit)
+    res = Cubature.solvecubaturelma!(cub, q, mask, tol=5e-14, maxiter=2000, hist=true, verbose=true, xinit=xinit)
     println("\n", cub.params,"\n")
     println(cub.weights,"\n")
     return cub, res
@@ -1311,7 +1311,7 @@ function init_tet_nodes_omega(p::Int,q::Int; ne::Int=-1, T=Float64)
                                     numedge=0,
                                     numS111=convert(Int,1/2*(nn^2 - nn)),
                                     centroid = convert(Bool,mod(ne-0,2)))
-    cub_tri = SummationByParts.init_tri_nodes_omega(p, q)
+    cub_tri,_ = SummationByParts.init_tri_nodes_omega(p, q)
     init_tri_cub(cub_tri, cub_lg.params)
     xedge = cub_tri.params
     wlg = cub_lg.weights
@@ -1385,10 +1385,11 @@ function init_tet_nodes_omega(p::Int,q::Int; ne::Int=-1, T=Float64)
     xinit = convert.(T,collect(Iterators.flatten([cub.params,cub.weights])))
     mask = Int[]
     append!(mask, 1 : cub.numparams+cub.numweights) 
-    Cubature.solvecubature!(cub, q, mask, tol=5e-14, hist=true, verbose=true, xinit=xinit, delta1=1e-6, delta2=1e-6)
+    # Cubature.solvecubature!(cub, q, mask, tol=5e-14, hist=true, verbose=true, xinit=xinit, delta1=1e-6, delta2=1e-6)
+    res = Cubature.solvecubaturelma!(cub, q, mask, tol=5e-14, maxiter=2000, hist=true, verbose=true, xinit=xinit)
     println("\n", cub.params,"\n")
     println(cub.weights,"\n")
-    return cub
+    return cub, res
 end
 
 # function init_tri_nodes(p::Int,q::Int; T=Float64)
