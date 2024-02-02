@@ -1067,6 +1067,7 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
             return res_old, v_old, 0
         end
 
+        # nu = 1.0/norm(diag(JtJ)) * norm(F)
         # trust-region like update
         if res > res_old
             v -= dv
