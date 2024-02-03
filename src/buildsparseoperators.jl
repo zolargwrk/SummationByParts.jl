@@ -3449,7 +3449,7 @@ function eliminate_nodes(cub::TriSymCub{T}, p::Int, q::Int) where {T}
                 end
 
                 # kk = 0
-                for i=1:1000
+                for i=1:200
                     if ((res_old-res)/res_old>1e-2 && res>5e-5 && res <1e4)
                         res_old=res
                         xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
@@ -3498,7 +3498,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
     vtx = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1]
  
     res_min = -1.0
-    nu = 1e1 #[1e-2,1e0,1e-2,1e0]
+    nu = 1e-1 #[1e-2,1e0,1e-2,1e0]
     for k = 1:4
         n = cub.numweights
         j=n
@@ -3627,7 +3627,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
             # V2 = V.^2*ones(size(V,2),1)
             # V2 = abs.(V)*ones(size(V,2),1)
             # V2 = V2./maximum(V2)
-            w = SymCubatures.calcweights(cub)
+            # w = SymCubatures.calcweights(cub)
             # w = w./maximum(w)
             # ss = vec(diagm(w[idx])*V2)
             # ss = vec(V2)
@@ -3754,7 +3754,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                     s = sortperm(ss[sym_cnt+1+convert(Int,cub.centroid)-cub.numS1111:sym_cnt+convert(Int,cub.centroid)],rev=rev_sort)
                     # s = sortperm(ss[sym_cnt+1-cub.numS1111:sym_cnt],rev=true)
                     ii = s[j-(sym_cnt-cub.numS1111)]+(sym_cnt-cub.numS1111)
-                    println("was here ------- S1111")
+                    # println("was here ------- S1111")
                 elseif sym_cnt-cub.numS1111 < j <= sym_cnt
                     j = sym_cnt-cub.numS1111
                 end
@@ -3765,7 +3765,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                     s = sortperm(ss[sym_cnt+1+convert(Int,cub.centroid)-cub.numS211:sym_cnt+convert(Int,cub.centroid)],rev=rev_sort)
                     # s = sortperm(ss[sym_cnt+1-cub.numS211:sym_cnt],rev=true)
                     ii = s[j-(sym_cnt-cub.numS211)]+(sym_cnt-cub.numS211)
-                    println("was here ------- S211")
+                    # println("was here ------- S211")
                 elseif sym_cnt-cub.numS211 < j <= sym_cnt
                     j = sym_cnt-cub.numS211
                 end
@@ -3777,7 +3777,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                     ii = s[j-(sym_cnt-cub.numS22)]+(sym_cnt-cub.numS22)
                     # pp = cub.params[cub.numS31+1:cub.numS31+cub.numS22]
                     # ii = argmax(norm.(pp.-1/4))
-                    println("was here ------- S22")
+                    # println("was here ------- S22")
                 elseif sym_cnt-cub.numS22 < j <= sym_cnt
                     j = sym_cnt-cub.numS22
                 end
@@ -3789,7 +3789,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                     ii = s[j-(sym_cnt-cub.numS31)]+(sym_cnt-cub.numS31)
                     # pp = cub.params[1:cub.numS31]
                     # ii = argmax(norm.(pp.-1/4))
-                    println("was here ------- S31")
+                    # println("was here ------- S31")
                 elseif sym_cnt-cub.numS31 < j <= sym_cnt
                     j = sym_cnt-cub.numS31
                 end
@@ -3840,21 +3840,21 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
     
             SymCubatures.setparams!(cub2, params)
             SymCubatures.setweights!(cub2, weights)
-
+            print_iter = false
             if cub2.numnodes>=1
                 xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
                 mask = Int[]
                 append!(mask, 1:cub2.numparams+cub2.numweights) 
                 # res = Cubature.solvecubature!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  xinit=xinit, delta1=1e-4, delta2=1e-4)
-                res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=print_iter, verbose=print_iter,  maxiter=10, xinit=xinit, nu=nu)
 
                 res_old=copy(res)
                 if res > 5e-14 && res < 1e4
                     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                    res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                    res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=print_iter, verbose=print_iter,  maxiter=10, xinit=xinit, nu=nu)
                 end
                 res_ratio=res/res_old 
-                println("res_here = ", res)
+                # println("res_here = ", res)
                 # res_old=res
                 for i=1:100
                     # # if ((res_ratio <= 9.8e-1 && res > 1e-2) || (res_ratio <= 9.99e-1 && res < 1e-2 && res > 1e-10))
@@ -3869,12 +3869,12 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                     if ((res_old-res)/res_old>1e-2 && res>5e-4 && res <1e4)
                         res_old=res
                         xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                        res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                        res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=print_iter, verbose=print_iter,  maxiter=10, xinit=xinit, nu=nu)
                     end
                     
                     if (res<5e-4 && res>1e-8)
                         xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                        res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                        res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=print_iter, verbose=print_iter,  maxiter=10, xinit=xinit, nu=nu)
                     end
                 end
                 
@@ -3886,17 +3886,19 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                     cub = cub2
                     res_min = res
                 end
-                println("\n", cub2.params,"\n")
+
+                println(cub2.params,"\n")
                 println(cub2.weights,"\n")
                 println("sym_groups : ", "[", convert(Int, cub2.centroid),",",cub2.numS31,",",cub2.numS22,",",cub2.numS211,",",cub2.numS1111,"]", ",   numnodes = ",cub2.numnodes)
                 # println(cub2,"\n")
                 println("k = ", k, ":  j = ", j, ":  n = ", n, ":  numnodes = ", cub.numnodes)
+                println("--------------")
             else
                 break 
             end
         end
     end
-    println("--------------------------")
+    println("=====================")
     if res_min==-1.0
         println("\n", cub.params,"\n")
         println(cub.weights,"\n")
@@ -3908,7 +3910,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
         println("\n", cub.params,"\n")
         println(cub.weights,"\n")
         # println(cub,"\n")
-        println("sym_groups : ", "[", convert(Int, cub.centroid),",",cub.numS31,",",cub.numS22,",",cub.numS211,",",cub.numS1111,"]", ",   numnodes = ",cub.numnodes)
+        println("sym_groups : ", "[", convert(Int, cub.centroid),",",cub.numS31,",",cub.numS22,",",cub.numS211,",",cub.numS1111,"]", ",   numnodes = ",cub.numnodes,"\n")
     end
     return cub, res_min
 end 
@@ -4179,4 +4181,28 @@ function calc_mindist_to_facet(x::Array{T}) where T
     #assume vertex is vtx= T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1]
     mindist = minimum([minimum(abs.(x.-1)),minimum(abs.((x'*ones(size(x,1),1)).+1))])
     return mindist
+end
+
+function write_cub_data(file::String, cub::TetSymCub{T}, p::Int, q::Int, res::T) where T
+    vtx = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1]
+    xyz = SymCubatures.calcnodes(cub, vtx)
+    mindist_surface = calc_mindist_to_facet(xyz)
+    open(file, "a") do io 
+        redirect_stdout(io) do
+            println("------------------------")
+            println("res = ", res)
+            println("p = ", p, ":  q = ", q)
+            println(cub.params)
+            println(cub.weights)
+            println(cub)
+
+            mindist = calcminnodedistance(cub, vtx)
+            w = SymCubatures.calcweights(cub)
+            println("\n","mindist = ", mindist)
+            println("minweight = ", minimum(w))
+            println("mindist_surface = ", mindist_surface)
+            checkInteriorNodeLocaton(cub)
+            println("------------------------","\n")
+        end
+    end
 end

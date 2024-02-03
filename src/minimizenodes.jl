@@ -1760,9 +1760,9 @@ function get_tri_omega_lg()
     # cub,res = SummationByParts.eliminate_nodes(cub, p, q)
 
     xy = SymCubatures.calcnodes(cub,vtx)
-    SummationByParts.plot_tri_nodes(x=xy, vtx=vtx, q=q, n=cub.numnodes,write_title=true,label_nodes=false)
-    # dir = "/project/z/zingg/workuzel/quadrature/"
-    dir =  joinpath(pwd(), "src/")
+    # SummationByParts.plot_tri_nodes(x=xy, vtx=vtx, q=q, n=cub.numnodes,write_title=true,label_nodes=false)
+    dir = "/project/z/zingg/workuzel/quadrature/test/"
+    # dir =  joinpath(pwd(), "src/")
     file = joinpath(dir,"tri_omega_lg.dat")
 
     xy = SymCubatures.calcnodes(cub, T[-1 -1; 1 -1; -1 1])
@@ -1795,12 +1795,12 @@ function get_tri_omega_lg()
     checkInteriorNodeLocaton(cub)
 end
 
-get_tri_omega_lg()
+# get_tri_omega_lg()
 
 # ---------------
 function get_tet_omega_lg()
-    p = 10
-    q = 2*p-0
+    p = 11
+    q = 2*p-1
     qq = 2*p+2*mod(p,2)
     T = Float64
     vtx = [1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
@@ -1812,56 +1812,37 @@ function get_tet_omega_lg()
     # cub,res = SummationByParts.eliminate_nodes(cub, p, q)
 
     xyz = SymCubatures.calcnodes(cub,vtx)
-    SummationByParts.plotly_tet_nodes(q=q, x=xyz, vtx=vtx)
-    # dir = "/project/z/zingg/workuzel/quadrature/"
-    dir =  joinpath(pwd(), "src/")
+    # SummationByParts.plotly_tet_nodes(q=q, x=xyz, vtx=vtx)
+    dir = "/project/z/zingg/workuzel/quadrature/test/"
+    # dir =  joinpath(pwd(), "src/")
     file = joinpath(dir,"tet_omega_lg.dat")
 
-    xyz = SymCubatures.calcnodes(cub, T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1])
-    mindist_surface = SummationByParts.calc_mindist_to_facet(xyz)
-    open(file, "a") do io 
-        redirect_stdout(io) do
-            println("------------------------")
-            println("res = ", res)
-            println("p = ", p, ":  q = ", q)
-            println(cub.params)
-            println(cub.weights)
-            println(cub)
-
-            mindist = calcminnodedistance(cub, vtx)
-            w = SymCubatures.calcweights(cub)
-            println("\n","mindist = ", mindist)
-            println("minweight = ", minimum(w))
-            println("mindist_surface = ", mindist_surface)
-            checkInteriorNodeLocaton(cub)
-            println("------------------------","\n")
-        end
-    end
+    SummationByParts.write_cub_data(file,cub,p,q,res)
 
     mindist = calcminnodedistance(cub, vtx)
 
     w = SymCubatures.calcweights(cub)
     println("\n","mindist = ", mindist)
     println("minweight = ", minimum(w))
-    println("mindist_surface = ", mindist_surface)
+    # println("mindist_surface = ", mindist_surface)
     checkInteriorNodeLocaton(cub)
 end
 
-# get_tet_omega_lg()
+get_tet_omega_lg()
 
 #---------------
-function derive_tri_omega_lg()
-    for i = 1:2
-        p = i
-        q = 2*p+1
-        T = Float64
-        vtx = T[-1 -1/sqrt(3); 1 -1/sqrt(3); 0 2/sqrt(3)]
+# function derive_tri_omega_lg()
+#     for i = 1:2
+#         p = i
+#         q = 2*p+1
+#         T = Float64
+#         vtx = T[-1 -1/sqrt(3); 1 -1/sqrt(3); 0 2/sqrt(3)]
 
-        cub, res = SummationByParts.init_tri_nodes_omega(p, q)
+#         cub, res = SummationByParts.init_tri_nodes_omega(p, q)
 
-        # dir = "/project/z/zingg/workuzel/quadrature/"
-        dir =  joinpath(pwd(), "src/")
-        file = joinpath(dir,"tri_omega_lg_2p1.dat")
+#         # dir = "/project/z/zingg/workuzel/quadrature/"
+#         dir =  joinpath(pwd(), "src/")
+#         file = joinpath(dir,"tri_omega_lg_2p1.dat")
 
 #         open(file, "a") do io 
 #             redirect_stdout(io) do
@@ -1889,4 +1870,4 @@ function derive_tri_omega_lg()
 #     end
 # end
 
-derive_tri_omega_lg()
+# derive_tri_omega_lg()
