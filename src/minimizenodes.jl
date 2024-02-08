@@ -1795,12 +1795,12 @@ function get_tri_omega_lg()
     checkInteriorNodeLocaton(cub)
 end
 
-get_tri_omega_lg()
+# get_tri_omega_lg()
 
 # ---------------
 function get_tet_omega_lg()
-    p = 10
-    q = 2*p-0
+    p = 9
+    q = 2*p-1
     qq = 2*p+2*mod(p,2)
     T = Float64
     vtx = [1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
@@ -1890,3 +1890,33 @@ end
 # end
 
 # derive_tri_omega_lg()
+
+#---------------
+vtx = T[-1 -1/sqrt(3); 1 -1/sqrt(3); 0 2/sqrt(3)]
+vtx_right = T[-1 -1; 1 -1; -1 1]
+p =3
+dim = 2 
+xs = SummationByParts.tensor_lgl_quad_nodes(p)
+xt = SummationByParts.square_to_tri_map(xs)
+xe = SummationByParts.perp_to_equi_tri_map(xt)
+SummationByParts.plot_tri_nodes(x=xt,vtx=vtx_right,write_title=false,label_nodes=false)
+
+vtx = [1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
+vtx_right_tet = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1];
+# x = SummationByParts.tensor_lgl_hex_nodes(p)
+# x = SummationByParts.cube_to_tet_map(x)
+# x = SummationByParts.perp_to_equi_tet_map(x)
+# SummationByParts.plotly_tet_nodes(x=x, vtx = vtx)
+
+# H,Q,D,E = SummationByParts.tensor_operators(p,dim)
+Hs,Qs,Ds,Es = SummationByParts.map_tensor_operators_to_tri(p)
+# Hs,Qs,Ds,Es = SummationByParts.map_tensor_operators_to_tet(p)
+
+n = (p+1)^2
+k = 1
+Qx = Hs[k]*Ds[k][:,:,1]
+# Qx = Qs[1][:,:,1]
+w = diag(Hs[k])
+x = xt[1,(k-1)*n+1: (k-1)*n+n] 
+y = xt[2,(k-1)*n+1: (k-1)*n+n] #xt[2,1:n^2]
+errs_x, rate_x, h_vec, errs_val= SummationByParts.test_accuracy(Qx, w, x, y, refine=6) 

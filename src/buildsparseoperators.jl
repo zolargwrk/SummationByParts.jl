@@ -694,8 +694,9 @@ end
 function test_accuracy(Q::Array{T,2},w::Array{T,1},x::Array{T,1},y::Array{T,1};refine=4) where{T}
 
     H = diagm(w)
-    Dx = inv(H)*Q[:,:,1]
-
+    # Dx = inv(H)*Q[:,:,1]
+    Dx = inv(H)*Q
+    
     errs_val = []
     errs_x = []
 
@@ -3497,7 +3498,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
     vtx = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1]
  
     res_min = -1.0
-    nu = 1e1 #[1e-2,1e0,1e-2,1e0]
+    nu = 1e0 #[1e-2,1e0,1e-2,1e0]
     for k = 1:4
         n = cub.numweights
         j=n
@@ -3693,6 +3694,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                 push!(ssf, mindist)
             end
             ss = ssf[idx]
+            # ss = ssf[idx].*w[idx]
             # ss = (ssd./minimum(ssd)) .* (ssf./minimum(ssf))
             
             # w = SymCubatures.calcweights(cub)

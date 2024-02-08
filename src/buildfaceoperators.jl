@@ -42,15 +42,16 @@ function buildfacereconstruction(facecub::PointSymCub{T}, cub::LineSymCub{T},
     Pf[:,ptr] = OrthoPoly.jacobipoly(vec(xf[1,:]), 0.0, 0.0, i)
     ptr += 1
   end
-  if SymCubatures.getnumfacenodes(cub) == 1
-    A = kron(Pv',I(facecub.numnodes))
-    b = vec(Pf)
-    R = zeros(facecub.numnodes*size(perm,1))
-    SummationByParts.calcSparseSolution!(A, b, R)
-    R = reshape(R, (facecub.numnodes,size(perm,1)))
-  else
-    R = Matrix((pinv(Pv')*Pf')')
-  end
+  # if SymCubatures.getnumfacenodes(cub) == 1
+  #   A = kron(Pv',I(facecub.numnodes))
+  #   b = vec(Pf)
+  #   R = zeros(facecub.numnodes*size(perm,1))
+  #   SummationByParts.calcSparseSolution!(A, b, R)
+  #   R = reshape(R, (facecub.numnodes,size(perm,1)))
+  # else
+  #   R = Matrix((pinv(Pv')*Pf')')
+  # end
+  R = Matrix((pinv(Pv')*Pf')')
   return R, perm
 end
 
@@ -137,8 +138,8 @@ function buildfacereconstruction(facecub::LineAsymCub{T}, cub::TriAsymCub{T},
   #   end
   # end
   
-  # R = (pinv(Pv')*Pf')'
-  R = I(facecub.numnodes)
+  R = (pinv(Pv')*Pf')'
+  # R = I(facecub.numnodes)
   return R, perm
 end
 

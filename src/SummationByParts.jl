@@ -144,5 +144,6 @@ include("utils.jl") # <--- miscellaneous functions
 include("derivecubature.jl") # <--- functions to derive cubature rules
 
 include("buildsparseoperators.jl") #<--- functions related to building sparse SBP operators 
+include("splitsimplexoperators.jl") #<--- function to build SBP operators on simplices using tensor product operators
 
 end # module
