@@ -69,13 +69,14 @@ function cube_hex_map(xp::Array{T},hex_vert::Array{T}) where T
     eta = xp[2]
     zeta = xp[3]
     psi = []
+
     push!(psi, 1/8*(1-xi)*(1-eta)*(1-zeta))
     push!(psi, 1/8*(1+xi)*(1-eta)*(1-zeta))
-    push!(psi, 1/8*(1+xi)*(1+eta)*(1-zeta))
     push!(psi, 1/8*(1-xi)*(1+eta)*(1-zeta))
-    push!(psi, 1/8*(1-xi)*(1+eta)*(1+zeta))
+    push!(psi, 1/8*(1+xi)*(1+eta)*(1-zeta))
     push!(psi, 1/8*(1-xi)*(1-eta)*(1+zeta))
     push!(psi, 1/8*(1+xi)*(1-eta)*(1+zeta))
+    push!(psi, 1/8*(1-xi)*(1+eta)*(1+zeta))
     push!(psi, 1/8*(1+xi)*(1+eta)*(1+zeta))
 
     x = zeros(3,1)
@@ -92,10 +93,6 @@ end
 ### SummationByParts.square_to_tri_map
 """
 function square_to_tri_map(xi::Array{T}) where T
-
-    # quad_vert = [[-1 -1; 0 -1; -1/3 -1/3; -1 0], 
-    #              [0 -1; 1 -1; 0 0; -1/3 -1/3], 
-    #              [-1 0; -1/3 -1/3; 0 0; -1 1]]
     quad_vert = get_quad_vert()
     n = size(xi,2)
     x = zeros(2,3*n)
@@ -115,42 +112,74 @@ function get_quad_vert()
     return quad_vert
 end
 
-function get_hex_vert()
-    v1 = [-1 -1/sqrt(3) -sqrt(6)/6]
-    v2 = [1 -1/sqrt(3) -sqrt(6)/6]
-    v3 = [0 2/sqrt(3) -sqrt(6)/6]
-    v4 = [0 0 sqrt(6)/2]
-    v5 = [1/2 sqrt(3)/6 -sqrt(6)/6]
-    v6 = [-1/2 sqrt(3)/6 -sqrt(6)/6]
-    v7 = [0 -1/sqrt(3) -sqrt(6)/6]
-    v8 = [0 1/sqrt(3) sqrt(6)/6]
-    v9 = [-1/2 -1/(2*sqrt(3)) sqrt(6)/6]
-    v10 = [1/2 -1/(2*sqrt(3)) sqrt(6)/6]
-    v11 = [0 0 -sqrt(6)/6]
-    v12 = [1/3 sqrt(3)/9 sqrt(6)/18]
-    v13 = [-1/3 sqrt(3)/9 sqrt(6)/18]
-    v14 = [0 -2*sqrt(3)/9 sqrt(6)/18]
-    v15 = [0 0 0]
-    hex_vert_equi = [[v2; v5; v11; v7; v14; v10; v12; v15],
-                     [v3; v6; v11; v5; v12; v8; v13; v15],
-                     [v1; v7; v11; v6; v13; v9; v14; v15],
-                     [v4; v8; v13; v9; v14; v10; v12; v15]]
-
-    hex_vert = []
-    for i = 1:4 
-        vert = Matrix((hex_vert_equi[i])')
-        push!(hex_vert, Matrix(equi_to_perp_tet_map(vert)'))
-    end
+function get_hex_vert(;T=Float64)
+    v1 = T[-1 -1 -1]
+    v2 = T[1 -1 -1]
+    v3 = T[-1 1 -1]
+    v4 = T[-1 -1 1]
+    v5 = T[0 0 -1]
+    v6 = T[-1 0 -1]
+    v7 = T[0 -1 -1]
+    v8 = T[-1 0 0]
+    v9 = T[-1 -1 0]
+    v10 = T[0 -1 0]
+    v11 = T[-1/3 -1/3 -1]
+    v12 = T[-1/3 -1/3 -1/3]
+    v13 = T[-1 -1/3 -1/3]
+    v14 = T[-1/3 -1 -1/3]
+    v15 = T[-1/2 -1/2 -1/2]
+    hex_vert = [[v2; v5; v7; v11; v10; v12; v14; v15],
+                     [v5; v3; v11; v6; v12; v8; v15; v13],
+                     [v7; v11; v1; v6; v14; v15; v9; v13],
+                     [v10; v4; v12; v8; v14; v9; v15; v13]]
     return hex_vert
 end
+
+# function get_hex_vert()
+#     v1 = [-1 -1/sqrt(3) -sqrt(6)/6]
+#     v2 = [1 -1/sqrt(3) -sqrt(6)/6]
+#     v3 = [0 2/sqrt(3) -sqrt(6)/6]
+#     v4 = [0 0 sqrt(6)/2]
+#     v5 = [1/2 sqrt(3)/6 -sqrt(6)/6]
+#     v6 = [-1/2 sqrt(3)/6 -sqrt(6)/6]
+#     v7 = [0 -1/sqrt(3) -sqrt(6)/6]
+#     v8 = [0 1/sqrt(3) sqrt(6)/6]
+#     v9 = [-1/2 -1/(2*sqrt(3)) sqrt(6)/6]
+#     v10 = [1/2 -1/(2*sqrt(3)) sqrt(6)/6]
+#     v11 = [0 0 -sqrt(6)/6]
+#     v12 = [1/3 sqrt(3)/9 sqrt(6)/18]
+#     v13 = [-1/3 sqrt(3)/9 sqrt(6)/18]
+#     v14 = [0 -2*sqrt(3)/9 sqrt(6)/18]
+#     v15 = [0 0 0]
+#     # hex_vert_equi = [[v2; v5; v11; v7; v14; v10; v12; v15],
+#     #                  [v3; v6; v11; v5; v12; v8; v13; v15],
+#     #                  [v1; v7; v11; v6; v13; v9; v14; v15],
+#     #                  [v4; v8; v13; v9; v14; v10; v12; v15]]
+#     # hex_vert_equi = [[v2; v5; v7; v11; v10; v12; v14; v15],
+#     #                  [v5; v3; v11; v6; v12; v8; v15; v13],
+#     #                  [v7; v11; v1; v6; v14; v15; v9; v13],
+#     #                  [v10; v12; v14; v15; v9; v13; v4; v8]]
+#     hex_vert_equi = [[v2; v5; v7; v11; v10; v12; v14; v15],
+#                      [v5; v3; v11; v6; v12; v8; v15; v13],
+#                      [v7; v11; v1; v6; v14; v15; v9; v13],
+#                      [v10; v4; v12; v8; v14; v9; v15; v13]]
+#     # hex_vert_equi = [[v7; v2; v11; v5; v14; v10; v15; v12],
+#     #                  [v5; v3; v11; v6; v12; v8; v15; v13],
+#     #                  [v7; v11; v1; v6; v14; v15; v9; v13],
+#     #                  [v10; v4; v12; v8; v14; v9; v15; v13]]
+#     hex_vert = []
+#     for i = 1:4 
+#         vert = Matrix((hex_vert_equi[i])')
+#         push!(hex_vert, Matrix(equi_to_perp_tet_map(vert)'))
+#     end
+#     return hex_vert
+# end
 
 """
 ### SummationByParts.cube_to_tet_map.jl 
 """
 function cube_to_tet_map(xi::Array{T}) where T
-    vtx= T[1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
     hex_vert = get_hex_vert()
-
     n = size(xi,2)
     x = zeros(3,4*n)
     for i=0:3 
@@ -159,7 +188,6 @@ function cube_to_tet_map(xi::Array{T}) where T
             x[:,i*n+j] = xp 
         end
     end
-    # SummationByParts.plotly_tet_nodes(x=x,vtx=vtx)
     return x
 end
 
@@ -197,7 +225,6 @@ end
 ### SummationByParts.perp_to_equi_tri_map
 """
 function equi_to_perp_tet_map(x::Array{T}) where T
-    # vtx= T[1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
     v1 = [-1,-1/sqrt(3), -1/sqrt(6)]; v2 = [ 1,-1/sqrt(3), -1/sqrt(6)];
     v3 = [ 0, 2/sqrt(3), -1/sqrt(6)]; v4 = [ 0, 0/sqrt(3),  3/sqrt(6)];
 
@@ -269,29 +296,29 @@ function metric_tet!(xp::Array{T},hex_vert::Array{T},dxi::SubArray{T},dx::SubArr
 
     push!(∂Ψ∂ξ, -1/8*(1-η)*(1-ζ))
     push!(∂Ψ∂ξ, 1/8*(1-η)*(1-ζ))
-    push!(∂Ψ∂ξ, 1/8*(1+η)*(1-ζ))
     push!(∂Ψ∂ξ, -1/8*(1+η)*(1-ζ))
-    push!(∂Ψ∂ξ, -1/8*(1+η)*(1+ζ))
+    push!(∂Ψ∂ξ, 1/8*(1+η)*(1-ζ))
     push!(∂Ψ∂ξ, -1/8*(1-η)*(1+ζ))
     push!(∂Ψ∂ξ, 1/8*(1-η)*(1+ζ))
+    push!(∂Ψ∂ξ, -1/8*(1+η)*(1+ζ))
     push!(∂Ψ∂ξ, 1/8*(1+η)*(1+ζ))
 
     push!(∂Ψ∂η, -1/8*(1-ξ)*(1-ζ))
     push!(∂Ψ∂η, -1/8*(1+ξ)*(1-ζ))
-    push!(∂Ψ∂η, 1/8*(1+ξ)*(1-ζ))
     push!(∂Ψ∂η, 1/8*(1-ξ)*(1-ζ))
-    push!(∂Ψ∂η, 1/8*(1-ξ)*(1+ζ))
+    push!(∂Ψ∂η, 1/8*(1+ξ)*(1-ζ))
     push!(∂Ψ∂η, -1/8*(1-ξ)*(1+ζ))
     push!(∂Ψ∂η, -1/8*(1+ξ)*(1+ζ))
+    push!(∂Ψ∂η, 1/8*(1-ξ)*(1+ζ))
     push!(∂Ψ∂η, 1/8*(1+ξ)*(1+ζ))
 
     push!(∂Ψ∂ζ, -1/8*(1-ξ)*(1-η))
     push!(∂Ψ∂ζ, -1/8*(1+ξ)*(1-η))
-    push!(∂Ψ∂ζ, -1/8*(1+ξ)*(1+η))
     push!(∂Ψ∂ζ, -1/8*(1-ξ)*(1+η))
-    push!(∂Ψ∂ζ, 1/8*(1-ξ)*(1+η))
+    push!(∂Ψ∂ζ, -1/8*(1+ξ)*(1+η))
     push!(∂Ψ∂ζ, 1/8*(1-ξ)*(1-η))
     push!(∂Ψ∂ζ, 1/8*(1+ξ)*(1-η))
+    push!(∂Ψ∂ζ, 1/8*(1-ξ)*(1+η))
     push!(∂Ψ∂ζ, 1/8*(1+ξ)*(1+η))
 
     ∂x∂ξ = 0.0
@@ -307,7 +334,7 @@ function metric_tet!(xp::Array{T},hex_vert::Array{T},dxi::SubArray{T},dx::SubArr
     for j=1:8
         ∂x∂ξ += hex_vert[j,1]*∂Ψ∂ξ[j]
         ∂x∂η += hex_vert[j,1]*∂Ψ∂η[j]
-        ∂x∂ζ +=  hex_vert[j,1]*∂Ψ∂ζ[j]
+        ∂x∂ζ += hex_vert[j,1]*∂Ψ∂ζ[j]
 
         ∂y∂ξ += hex_vert[j,2]*∂Ψ∂ξ[j]
         ∂y∂η += hex_vert[j,2]*∂Ψ∂η[j]
@@ -318,7 +345,7 @@ function metric_tet!(xp::Array{T},hex_vert::Array{T},dxi::SubArray{T},dx::SubArr
         ∂z∂ζ += hex_vert[j,3]*∂Ψ∂ζ[j]
     end
 
-    J = abs(∂x∂ξ*∂y∂η*∂z∂ζ + ∂x∂η*∂y∂ζ*∂z∂ξ + ∂x∂ζ*∂y∂ξ*∂z∂η - 
+    J = (∂x∂ξ*∂y∂η*∂z∂ζ + ∂x∂η*∂y∂ζ*∂z∂ξ + ∂x∂ζ*∂y∂ξ*∂z∂η - 
             ∂x∂ζ*∂y∂η*∂z∂ξ - ∂x∂η*∂y∂ξ*∂z∂ζ - ∂x∂ξ*∂y∂ζ*∂z∂η)
     
     ∂ξ∂x = 1/J * (∂y∂η*∂z∂ζ - ∂y∂ζ*∂z∂η) 
@@ -374,7 +401,7 @@ function tensor_operators(p::Int, dim::Int; T=Float64)
     Q = zeros(T, (n^dim,n^dim,dim))
     D = zeros(T, (n^dim,n^dim,dim))
     E = zeros(T, (n^dim,n^dim,dim))
-    R = zeros(T, (n,n^dim,2*dim))
+    R = zeros(T, (n^(dim-1),n^dim,2*dim))
 
     if dim==2
         H[:,:] = kron(H1, H1)
@@ -384,29 +411,35 @@ function tensor_operators(p::Int, dim::Int; T=Float64)
         D[:,:,2] = kron(D1, In)
         E[:,:,1] = kron(In, E1)
         E[:,:,2] = kron(E1, In)
-        R[:,:,1] = kron(In, tL') #left facet 
-        R[:,:,2] = kron(In, tR') #right facet 
-        R[:,:,3] = kron(tL', In) #bottom facet 
-        R[:,:,4] = kron(tR', In) #right facet
+        R[:,:,1] = kron(In, tL') #left facet (x=-1)
+        R[:,:,2] = kron(In, tR') #right facet (x=1)
+        R[:,:,3] = kron(tL', In) #bottom facet (y=-1)
+        R[:,:,4] = kron(tR', In) #top facet (y=1)
     elseif dim==3 
         H[:,:] = kron(H1,kron(H1, H1))
-        Q[:,:,1] = kron(In, kron(In, Q1))
-        Q[:,:,2] = kron(In, kron(Q1, In))
-        Q[:,:,3] = kron(Q1, kron(In, In))
+        Q[:,:,1] = kron(H1, kron(H1, Q1))
+        Q[:,:,2] = kron(H1, kron(Q1, H1))
+        Q[:,:,3] = kron(Q1, kron(H1, H1))
         D[:,:,1] = kron(In, kron(In, D1))
         D[:,:,2] = kron(In, kron(D1, In))
         D[:,:,3] = kron(D1, kron(In, In))
         E[:,:,1] = kron(In, kron(In, E1))
         E[:,:,2] = kron(In, kron(E1, In))
         E[:,:,3] = kron(E1, kron(In, In))
+        R[:,:,1] = kron(In,kron(In, tL')) #left facet (x=-1)
+        R[:,:,2] = kron(In,kron(In, tR')) #right facet (x=1)
+        R[:,:,3] = kron(In,kron(tL', In)) #back facet (y=-1)
+        R[:,:,4] = kron(In,kron(tR', In)) #front facet (y=1)
+        R[:,:,5] = kron(tL',kron(In, In)) #bottom facet (z=-1) 
+        R[:,:,6] = kron(tR',kron(In, In)) #top facet (z=1)
     end
     return H, Q, D, E, R
 end
 
 """
-### SummationByParts.facet_tensor_operators_square
+### SummationByParts.square_normals_facet_nodes
 """
-function facet_tensor_operators_square(x::Array{T}) where T
+function square_normals_facet_nodes(x::Array{T}) where T
    
     dim=2
     n = size(x,2)
@@ -415,12 +448,8 @@ function facet_tensor_operators_square(x::Array{T}) where T
     facet_node_idx = zeros(Int, (4,nf))
 
     N[1,:,1] .= -1.0
-    N[2,:,1] .= 0.0
     N[1,:,2] .= 1.0
-    N[2,:,2] .= 0.0
-    N[1,:,3] .= 0.0
     N[2,:,3] .= -1.0
-    N[1,:,4] .= 0.0
     N[2,:,4] .= 1.0
 
     facet_node_idx[1,:] = 1:nf:n
@@ -430,68 +459,35 @@ function facet_tensor_operators_square(x::Array{T}) where T
 
     return N, facet_node_idx
 end
-# function facet_tensor_operators_square(x::Array{T}) where T
 
-#     # oper_lgl = getLineSegSBPLobbato(degree=p)
-#     # facecub, _= SummationByParts.Cubature.pointCubature()
-#     # R, _ = SummationByParts.buildfacereconstruction(facecub, oper_lgl.volcub, oper_lgl.vtx, p)
-#     # perm = sortperm(vec(SymCubatures.calcnodes(oper_lgl.cub, oper_lgl.vtx)))
-    
-#     dim=2
-#     n = size(x,2)
-#     nf = convert(Int, sqrt(n))
-#     R = zeros(T, (nf,n,4))   # extrapolation matrix for each facet
-#     N = zeros(T, (dim,nf,4)) # normal vector for each facet
-#     facet_node_idx = zeros(Int, (4,nf))
+"""
+### SummationByParts.cube_normals_facet_nodes
+"""
+function cube_normals_facet_nodes(x::Array{T}) where T
+   
+    dim=3
+    n = size(x,2)
+    n1 = convert(Int, round(n^(1/3)))
+    nf = convert(Int, round(n^(2/3)))
+    N = zeros(T, (dim,nf,6)) # normal vector for each facet
+    facet_node_idx = zeros(Int, (6,nf))
 
-#     k=1
-#     for j=1:n
-#         if x[1,j] == -1.0
-#             R[k,j,1] = 1.0
-#             k+=1
-#         end
-#     end
+    N[1,:,1] .= -1.0
+    N[1,:,2] .= 1.0
+    N[2,:,3] .= -1.0
+    N[2,:,4] .= 1.0
+    N[3,:,5] .= -1.0
+    N[3,:,6] .= 1.0
 
-#     k=1
-#     for j=1:n
-#         if x[1,j] == 1.0
-#             R[k,j,2] = 1.0
-#             k+=1
-#         end
-#     end
+    facet_node_idx[1,:] = 1:n1:n
+    facet_node_idx[2,:] = n1:n1:n
+    facet_node_idx[3,:] = collect(Iterators.flatten([1:n1...] .+ (i-1)*nf for i in 1:n1))'
+    facet_node_idx[4,:] = collect(Iterators.flatten([nf+1-n1:nf...] .+ (i-1)*nf for i in 1:n1))'
+    facet_node_idx[5,:] = 1:nf 
+    facet_node_idx[6,:] = n+1-nf:n
 
-#     k=1
-#     for j=1:n
-#         if x[2,j] == -1.0
-#             R[k,j,3] = 1.0
-#             k+=1
-#         end
-#     end
-
-#     k=1
-#     for j=1:n
-#         if x[2,j] == 1 .0
-#             R[k,j,4] = 1.0
-#             k+=1
-#         end
-#     end
-
-#     N[1,:,1] .= -1.0
-#     N[2,:,1] .= 0.0
-#     N[1,:,2] .= 1.0
-#     N[2,:,2] .= 0.0
-#     N[1,:,3] .= 0.0
-#     N[2,:,3] .= -1.0
-#     N[1,:,4] .= 0.0
-#     N[2,:,4] .= 1.0
-
-#     facet_node_idx[1,:] = 1:nf:n
-#     facet_node_idx[2,:] = nf:nf:n
-#     facet_node_idx[3,:] = 1:nf 
-#     facet_node_idx[4,:] = (n+1-nf):n
-
-#     return R, N, facet_node_idx
-# end
+    return N, facet_node_idx
+end
 
 """
 ### SummationByParts.map_tensor_operators_to_tri
@@ -502,7 +498,6 @@ function map_tensor_operators_to_tri(p::Int; T=Float64)
     xt = square_to_tri_map(xs)    #nodes on triangle 
     n = size(xs,2)
     nf = convert(Int, sqrt(n))
-    # xs[:,[3,4]] = xs[:,[4,3]]
 
     qf = 2*(p+1)-3 
     cub_lgl, vtx_lgl = SummationByParts.Cubature.quadrature(qf, internal=false)
@@ -510,9 +505,7 @@ function map_tensor_operators_to_tri(p::Int; T=Float64)
     B = SymCubatures.calcweights(cub_lgl)[perm]
 
     quad_vert = get_quad_vert()
-
-    Nhat, facet_node_idx = facet_tensor_operators_square(xs)
-    # Rhat, Nhat, facet_node_idx = facet_tensor_operators_square(xs)
+    Nhat, facet_node_idx = square_normals_facet_nodes(xs)
     
     dxis = []
     dxs = []
@@ -533,8 +526,6 @@ function map_tensor_operators_to_tri(p::Int; T=Float64)
         for k=1:4
             N[1,:,k] = J[facet_node_idx[k,:]].*(dx[1,facet_node_idx[k,:]].*Nhat[1,:,k] .+ dx[3,facet_node_idx[k,:]].*Nhat[2,:,k])
             N[2,:,k] = J[facet_node_idx[k,:]].*(dx[2,facet_node_idx[k,:]].*Nhat[1,:,k] .+ dx[4,facet_node_idx[k,:]].*Nhat[2,:,k])
-            # N[1,:,k] = (dxi[4,facet_node_idx[k,:]].*Nhat[1,:,k] .- dxi[3,facet_node_idx[k,:]].*Nhat[2,:,k])
-            # N[2,:,k] = (-dxi[2,facet_node_idx[k,:]].*Nhat[1,:,k] .+ dxi[1,facet_node_idx[k,:]].*Nhat[2,:,k])
         end
         push!(Ns, N)
     end
@@ -564,10 +555,6 @@ function map_tensor_operators_to_tri(p::Int; T=Float64)
              0.5*(Qhat[:,:,1]' * diagm(vec(Js[i]).*dxs[i][1,:]) + Qhat[:,:,2]' * diagm(vec(Js[i]).*dxs[i][3,:]))
         Sy = 0.5*(diagm(vec(Js[i]).*dxs[i][2,:]) * Qhat[:,:,1] + diagm(vec(Js[i]).*dxs[i][4,:]) * Qhat[:,:,2]) - 
              0.5*(Qhat[:,:,1]' * diagm(vec(Js[i]).*dxs[i][2,:]) + Qhat[:,:,2]' * diagm(vec(Js[i]).*dxs[i][4,:]))
-        # Sx = 0.5*(diagm(dxis[i][4,:]) * Qhat[:,:,1] - Qhat[:,:,1]'*diagm(dxis[i][4,:])) + 
-        #      0.5*(-diagm(dxis[i][3,:]) * Qhat[:,:,2] + Qhat[:,:,2]'*diagm(dxis[i][3,:]))
-        # Sy = 0.5*(-diagm(dxis[i][2,:]) * Qhat[:,:,1] + Qhat[:,:,1]'*diagm(dxis[i][2,:])) + 
-        #      0.5*(diagm(dxis[i][1,:]) * Qhat[:,:,2] - Qhat[:,:,2]'*diagm(dxis[i][1,:]))
         Q[:,:,1] = Sx + 0.5.*E[:,:,1]
         Q[:,:,2] = Sy + 0.5.*E[:,:,2]
         push!(Qs, Q)
@@ -586,11 +573,20 @@ end
 """
 function map_tensor_operators_to_tet(p::Int; T=Float64)
     dim = 3
-    xs = tensor_lgl_hex_nodes(p)   #nodes on cube
-    xt = cube_to_tet_map(xs)       #nodes on tetrahedron 
-    n = size(xs,2)
-    
+    xc = tensor_lgl_hex_nodes(p)   #nodes on cube
+    xt = cube_to_tet_map(xc)       #nodes on tetrahedron 
+    n = size(xc,2)
+    n1 = round(n^(1/3))
+    nf = convert(Int, round(n1^2))
+
+    qf = 2*(p+1)-3 
+    cub_lgl, vtx_lgl = SummationByParts.Cubature.quadrature(qf, internal=false)
+    perm = sortperm(vec(SymCubatures.calcnodes(cub_lgl, vtx_lgl)))
+    B = SymCubatures.calcweights(cub_lgl)[perm]
+    B = vec(kron(B,B))
+
     hex_vert = get_hex_vert()
+    Nhat, facet_node_idx = cube_normals_facet_nodes(xc) 
 
     dxis = []
     dxs = []
@@ -602,38 +598,50 @@ function map_tensor_operators_to_tet(p::Int; T=Float64)
         J = zeros(1,n)
         N = zeros(3,n)
         for j=1:n
-            metric_tet!(xt[:,(i-1)*n+j],hex_vert[i],view(dxi,:,j),view(dx,:,j),view(J,:,j))
-            N[1,j] = J[j]*(dx[1,j]+dx[1+dim,j]+dx[1+2*dim,j])
-            N[2,j] = J[j]*(dx[1,j]+dx[2+dim,j]+dx[2+2*dim,j])
-            N[3,j] = J[j]*(dx[1,j]+dx[3+dim,j]+dx[3+2*dim,j])
+            metric_tet!(xc[:,j],hex_vert[i],view(dxi,:,j),view(dx,:,j),view(J,:,j))
         end
         push!(dxis, dxi)
         push!(dxs, dx)
         push!(Js, J)
+
+        N = zeros(T,(dim,nf,2*dim))
+        for k=1:6
+            for id=1:dim
+                N[id,:,k] = J[facet_node_idx[k,:]].*(dx[id,facet_node_idx[k,:]].*Nhat[1,:,k] .+ 
+                                                     dx[dim+id,facet_node_idx[k,:]].*Nhat[2,:,k] .+
+                                                     dx[2*dim+id,facet_node_idx[k,:]].*Nhat[3,:,k])
+            end
+        end
         push!(Ns, N)
     end
 
-    Hhat, Qhat, Dhat, Ehat = tensor_operators(p, dim, T=T)
+    Hhat, Qhat, Dhat, Ehat, Rhat = tensor_operators(p, dim, T=T)
+    Es = []
+    for k=1:dim+1
+        E = zeros(T, (n,n,dim))
+        for i=1:dim
+            for j=1:2*dim
+                E[:,:,i] += Rhat[:,:,j]'*diagm(Ns[k][i,:,j].*B)*Rhat[:,:,j]
+            end
+        end
+        push!(Es,E)
+    end
+
     Hs = []
     Qs = []
     Ds = []
-    Es = []
-    for i=1:4
+    for i=1:dim+1
         Q = zeros(T, (n,n,dim))
-        E = zeros(T, (n,n,dim))
+        E = Es[i]
         D = zeros(T, (n,n,dim))
         H = diagm(vec(Js[i]))*Hhat 
         push!(Hs, H)
-        E[:,:,1] = diagm(vec(Ns[i][1,:])).*Ehat[:,:,1]
-        E[:,:,2] = diagm(vec(Ns[i][2,:])).*Ehat[:,:,2]
-        E[:,:,3] = diagm(vec(Ns[i][3,:])).*Ehat[:,:,3]
-        push!(Es, E)
-        Sx = 0.5*(diagm(vec(Js[i]).*dxs[i][1,:]) * Qhat[:,:,1] + diagm(vec(Js[i]).*dxs[i][1+dim,:]) * Qhat[:,:,1] + diagm(vec(Js[i]).*dxs[i][1+2*dim,:]) * Qhat[:,:,1]) - 
-             0.5*(Qhat[:,:,1]' * diagm(vec(Js[i]).*dxs[i][1,:]) + Qhat[:,:,1]' * diagm(vec(Js[i]).*dxs[i][1+dim,:]) + Qhat[:,:,1]' * diagm(vec(Js[i]).*dxs[i][1+2*dim,:]))
-        Sy = 0.5*(diagm(vec(Js[i]).*dxs[i][2,:]) * Qhat[:,:,2] + diagm(vec(Js[i]).*dxs[i][2+dim,:]) * Qhat[:,:,2] + diagm(vec(Js[i]).*dxs[i][2+2*dim,:]) * Qhat[:,:,2]) - 
-             0.5*(Qhat[:,:,2]' * diagm(vec(Js[i]).*dxs[i][2,:]) + Qhat[:,:,2]' * diagm(vec(Js[i]).*dxs[i][2+dim,:]) + Qhat[:,:,2]' * diagm(vec(Js[i]).*dxs[i][2+2*dim,:]))
-        Sz = 0.5*(diagm(vec(Js[i]).*dxs[i][3,:]) * Qhat[:,:,3] + diagm(vec(Js[i]).*dxs[i][3+dim,:]) * Qhat[:,:,3] + diagm(vec(Js[i]).*dxs[i][3+2*dim,:]) * Qhat[:,:,3]) - 
-             0.5*(Qhat[:,:,3]' * diagm(vec(Js[i]).*dxs[i][3,:]) + Qhat[:,:,3]' * diagm(vec(Js[i]).*dxs[i][3+dim,:]) + Qhat[:,:,3]' * diagm(vec(Js[i]).*dxs[i][3+2*dim,:]))
+        Sx = 0.5*(diagm(vec(Js[i]).*dxs[i][1,:]) * Qhat[:,:,1] + diagm(vec(Js[i]).*dxs[i][1+dim,:]) * Qhat[:,:,2] + diagm(vec(Js[i]).*dxs[i][1+2*dim,:]) * Qhat[:,:,3]) - 
+             0.5*(Qhat[:,:,1]' * diagm(vec(Js[i]).*dxs[i][1,:]) + Qhat[:,:,2]' * diagm(vec(Js[i]).*dxs[i][1+dim,:]) + Qhat[:,:,3]' * diagm(vec(Js[i]).*dxs[i][1+2*dim,:]))
+        Sy = 0.5*(diagm(vec(Js[i]).*dxs[i][2,:]) * Qhat[:,:,1] + diagm(vec(Js[i]).*dxs[i][2+dim,:]) * Qhat[:,:,2] + diagm(vec(Js[i]).*dxs[i][2+2*dim,:]) * Qhat[:,:,3]) - 
+             0.5*(Qhat[:,:,1]' * diagm(vec(Js[i]).*dxs[i][2,:]) + Qhat[:,:,2]' * diagm(vec(Js[i]).*dxs[i][2+dim,:]) + Qhat[:,:,3]' * diagm(vec(Js[i]).*dxs[i][2+2*dim,:]))
+        Sz = 0.5*(diagm(vec(Js[i]).*dxs[i][3,:]) * Qhat[:,:,1] + diagm(vec(Js[i]).*dxs[i][3+dim,:]) * Qhat[:,:,2] + diagm(vec(Js[i]).*dxs[i][3+2*dim,:]) * Qhat[:,:,3]) - 
+             0.5*(Qhat[:,:,1]' * diagm(vec(Js[i]).*dxs[i][3,:]) + Qhat[:,:,2]' * diagm(vec(Js[i]).*dxs[i][3+dim,:]) + Qhat[:,:,3]' * diagm(vec(Js[i]).*dxs[i][3+2*dim,:]))
         
         Q[:,:,1] = Sx + 0.5.*E[:,:,1]
         Q[:,:,2] = Sy + 0.5.*E[:,:,2]
@@ -642,6 +650,9 @@ function map_tensor_operators_to_tet(p::Int; T=Float64)
         D[:,:,1] = inv(H)*Q[:,:,1]
         D[:,:,2] = inv(H)*Q[:,:,2]
         D[:,:,3] = inv(H)*Q[:,:,3]
+        # D[:,:,1] = diagm(vec(dxs[i][1,:]))*Dhat[:,:,1] + diagm(vec(dxs[i][4,:]))*Dhat[:,:,2] + diagm(vec(dxs[i][7,:]))*Dhat[:,:,3]
+        # D[:,:,2] = diagm(vec(dxs[i][2,:]))*Dhat[:,:,1] + diagm(vec(dxs[i][5,:]))*Dhat[:,:,2] + diagm(vec(dxs[i][8,:]))*Dhat[:,:,3]
+        # D[:,:,3] = diagm(vec(dxs[i][3,:]))*Dhat[:,:,1] + diagm(vec(dxs[i][6,:]))*Dhat[:,:,2] + diagm(vec(dxs[i][9,:]))*Dhat[:,:,3]
         push!(Ds, D)
     end 
 
