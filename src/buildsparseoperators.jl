@@ -696,7 +696,7 @@ function test_accuracy(Q::Array{T,2},w::Array{T,1},x::Array{T,1},y::Array{T,1};r
     H = diagm(w)
     # Dx = inv(H)*Q[:,:,1]
     Dx = inv(H)*Q
-    
+
     errs_val = []
     errs_x = []
 
@@ -705,6 +705,37 @@ function test_accuracy(Q::Array{T,2},w::Array{T,1},x::Array{T,1},y::Array{T,1};r
     for h in h_vec
         f = sin.(ω*h*x).*sin.(ω*h*y)
         fx = ω*h*cos.(ω*h*x).*sin.(ω*h*y)
+
+        fx_num = Dx*f
+
+        push!(errs_val, (fx .- fx_num))
+        err_x = sqrt((fx .- fx_num)' * H *(fx .- fx_num))
+        # err_x = norm(fx .- fx_num)
+        push!(errs_x, err_x)
+    end
+
+    rate_x = []
+    for i = 1:length(h_vec)-1
+        push!(rate_x, log10(errs_x[i+1]/errs_x[i])/log10(h_vec[i+1]/h_vec[i]))
+    end
+
+    return errs_x, rate_x, h_vec, errs_val
+end
+
+function test_accuracy(Q::Array{T,2},w::Array{T,1},x::Array{T,1},y::Array{T,1}, z::Array{T,1};refine=4) where{T}
+
+    H = diagm(w)
+    # Dx = inv(H)*Q[:,:,1]
+    Dx = inv(H)*Q
+    
+    errs_val = []
+    errs_x = []
+
+    h_vec = [4.0^-i for i in 0:refine]
+    ω = 2*π
+    for h in h_vec
+        f = sin.(ω*h*x).*sin.(ω*h*y).*sin.(ω*h*z)
+        fx = ω*h*cos.(ω*h*x).*sin.(ω*h*y).*sin.(ω*h*z)
 
         fx_num = Dx*f
 

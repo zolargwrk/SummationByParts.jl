@@ -1894,29 +1894,42 @@ end
 #---------------
 vtx = T[-1 -1/sqrt(3); 1 -1/sqrt(3); 0 2/sqrt(3)]
 vtx_right = T[-1 -1; 1 -1; -1 1]
-p =6
+p =20
 dim = 3
 # xs = SummationByParts.tensor_lgl_quad_nodes(p)
 # xt = SummationByParts.square_to_tri_map(xs)
 # xe = SummationByParts.perp_to_equi_tri_map(xt)
-# SummationByParts.plot_tri_nodes(x=xt,vtx=vtx_right,write_title=false,label_nodes=false)
+xg,_= SummationByParts.global_node_index_tri(p)
+# SummationByParts.plot_tri_nodes(x=xe,vtx=vtx_right,write_title=false,label_nodes=false)
 
 vtx = [1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
 vtx_right_tet = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1];
-xh = SummationByParts.tensor_lgl_hex_nodes(p)
-xt = SummationByParts.cube_to_tet_map(xh)
+# xh = SummationByParts.tensor_lgl_hex_nodes(p)
+# xt = SummationByParts.cube_to_tet_map(xh)
 # xe = SummationByParts.perp_to_equi_tet_map(xt)
+# xg,_ = SummationByParts.global_node_index_tet(p)
 # SummationByParts.plotly_tet_nodes(x=xe, vtx = vtx)
 
 # H,Q,D,E = SummationByParts.tensor_operators(p,dim)
 # Hs,Qs,Ds,Es = SummationByParts.map_tensor_operators_to_tri(p)
-Hs,Qs,Ds,Es = SummationByParts.map_tensor_operators_to_tet(p)
+# Hs,Qs,Ds,Es = SummationByParts.map_tensor_operators_to_tet(p)
 
-n = (p+1)^dim
-k = 1
-Qx = Hs[k]*Ds[k][:,:,1]
-# Qx = Qs[1][:,:,1]
-w = diag(Hs[k])
-x = xt[1,(k-1)*n+1: (k-1)*n+n] 
-y = xt[2,(k-1)*n+1: (k-1)*n+n] #xt[2,1:n^2]
-errs_x, rate_x, h_vec, errs_val= SummationByParts.test_accuracy(Qx, w, x, y, refine=6) 
+H,Q,D,E = SummationByParts.construct_split_operator_tri(p)
+# H,Q,D,E = SummationByParts.construct_split_operator_tet(p)
+
+# @profview SummationByParts.construct_split_operator_tet(p)
+
+
+# n = (p+1)^dim
+# k = 1
+# Qx = Hs[k]*Ds[k][:,:,1]
+# # Qx = Qs[1][:,:,1]
+# w = diag(Hs[k])
+# x = xt[1,(k-1)*n+1: (k-1)*n+n] 
+# y = xt[2,(k-1)*n+1: (k-1)*n+n] #xt[2,1:n^2]
+
+# Qx = Q[1]
+# w = diag(H)
+# x = xg[1,:]
+# y = xg[2,:]
+# errs_x, rate_x, h_vec, errs_val= SummationByParts.test_accuracy(Qx, w, x, y, refine=6) 

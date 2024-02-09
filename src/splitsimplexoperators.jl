@@ -1,6 +1,7 @@
 using SummationByParts
 using SummationByParts.Cubature
 using SummationByParts.OrthoPoly
+using SparseArrays
 
 # This file gathers functions that are used to construct multidimensional 
 # SBP operators by splitting simplices into tensor-product quad and hexs
@@ -129,9 +130,9 @@ function get_hex_vert(;T=Float64)
     v14 = T[-1/3 -1 -1/3]
     v15 = T[-1/2 -1/2 -1/2]
     hex_vert = [[v2; v5; v7; v11; v10; v12; v14; v15],
-                     [v5; v3; v11; v6; v12; v8; v15; v13],
-                     [v7; v11; v1; v6; v14; v15; v9; v13],
-                     [v10; v4; v12; v8; v14; v9; v15; v13]]
+                [v5; v3; v11; v6; v12; v8; v15; v13],
+                [v7; v11; v1; v6; v14; v15; v9; v13],
+                [v10; v4; v12; v8; v14; v9; v15; v13]]
     return hex_vert
 end
 
@@ -437,40 +438,48 @@ function tensor_operators(p::Int, dim::Int; T=Float64)
 end
 
 """
-### SummationByParts.square_normals_facet_nodes
+### SummationByParts.normals_square
 """
-function square_normals_facet_nodes(x::Array{T}) where T
+function normals_square(x::Array{T}) where T
    
     dim=2
     n = size(x,2)
     nf = convert(Int, sqrt(n))
     N = zeros(T, (dim,nf,4)) # normal vector for each facet
-    facet_node_idx = zeros(Int, (4,nf))
 
     N[1,:,1] .= -1.0
     N[1,:,2] .= 1.0
     N[2,:,3] .= -1.0
     N[2,:,4] .= 1.0
 
+    return N
+end
+
+"""
+### SummationByParts.facet_nodes_square
+"""
+function facet_nodes_square(x::Array{T}) where T
+    n = size(x,2)
+    nf = convert(Int, sqrt(n))
+    facet_node_idx = zeros(Int, (4,nf))
+
     facet_node_idx[1,:] = 1:nf:n
     facet_node_idx[2,:] = nf:nf:n
     facet_node_idx[3,:] = 1:nf 
     facet_node_idx[4,:] = (n+1-nf):n
 
-    return N, facet_node_idx
+    return facet_node_idx
 end
 
 """
-### SummationByParts.cube_normals_facet_nodes
+### SummationByParts.normals_cube
 """
-function cube_normals_facet_nodes(x::Array{T}) where T
+function normals_cube(x::Array{T}) where T
    
     dim=3
     n = size(x,2)
-    n1 = convert(Int, round(n^(1/3)))
     nf = convert(Int, round(n^(2/3)))
     N = zeros(T, (dim,nf,6)) # normal vector for each facet
-    facet_node_idx = zeros(Int, (6,nf))
 
     N[1,:,1] .= -1.0
     N[1,:,2] .= 1.0
@@ -479,6 +488,19 @@ function cube_normals_facet_nodes(x::Array{T}) where T
     N[3,:,5] .= -1.0
     N[3,:,6] .= 1.0
 
+    return N
+end
+
+"""
+### SummationByParts.cube_normals_facet_nodes
+"""
+function facet_nodes_cube(x::Array{T}) where T
+ 
+    n = size(x,2)
+    n1 = convert(Int, round(n^(1/3)))
+    nf = convert(Int, round(n^(2/3)))
+    facet_node_idx = zeros(Int, (6,nf))
+
     facet_node_idx[1,:] = 1:n1:n
     facet_node_idx[2,:] = n1:n1:n
     facet_node_idx[3,:] = collect(Iterators.flatten([1:n1...] .+ (i-1)*nf for i in 1:n1))'
@@ -486,7 +508,7 @@ function cube_normals_facet_nodes(x::Array{T}) where T
     facet_node_idx[5,:] = 1:nf 
     facet_node_idx[6,:] = n+1-nf:n
 
-    return N, facet_node_idx
+    return facet_node_idx
 end
 
 """
@@ -495,7 +517,6 @@ end
 function map_tensor_operators_to_tri(p::Int; T=Float64)
     dim = 2
     xs = tensor_lgl_quad_nodes(p) #nodes on square
-    xt = square_to_tri_map(xs)    #nodes on triangle 
     n = size(xs,2)
     nf = convert(Int, sqrt(n))
 
@@ -505,7 +526,8 @@ function map_tensor_operators_to_tri(p::Int; T=Float64)
     B = SymCubatures.calcweights(cub_lgl)[perm]
 
     quad_vert = get_quad_vert()
-    Nhat, facet_node_idx = square_normals_facet_nodes(xs)
+    Nhat = normals_square(xs)
+    facet_node_idx = facet_nodes_square(xs)
     
     dxis = []
     dxs = []
@@ -574,7 +596,6 @@ end
 function map_tensor_operators_to_tet(p::Int; T=Float64)
     dim = 3
     xc = tensor_lgl_hex_nodes(p)   #nodes on cube
-    xt = cube_to_tet_map(xc)       #nodes on tetrahedron 
     n = size(xc,2)
     n1 = round(n^(1/3))
     nf = convert(Int, round(n1^2))
@@ -586,7 +607,8 @@ function map_tensor_operators_to_tet(p::Int; T=Float64)
     B = vec(kron(B,B))
 
     hex_vert = get_hex_vert()
-    Nhat, facet_node_idx = cube_normals_facet_nodes(xc) 
+    Nhat = normals_cube(xc) 
+    facet_node_idx = facet_nodes_cube(xc) 
 
     dxis = []
     dxs = []
@@ -657,4 +679,163 @@ function map_tensor_operators_to_tet(p::Int; T=Float64)
     end 
 
     return Hs,Qs,Ds,Es
+end
+
+"""
+### SummationByParts.global_node_index_tri
+"""
+function global_node_index_tri(p::Int; T=Float64)
+    xs = tensor_lgl_quad_nodes(p)
+    xt = square_to_tri_map(xs)
+    n = size(xs,2)
+
+    facet_node_idx = facet_nodes_square(xs)
+    xg = copy(xt)
+    remove_idx = collect(Iterators.flatten([n.+facet_node_idx[1,:], (2*n).+facet_node_idx[2,:], (2*n).+facet_node_idx[3,:]]))
+    xg = xg[:, filter(x -> !(x in remove_idx), 1:size(xg, 2))]
+
+    loc_glob_idx = []
+    for k = 1:3
+        x = zeros(Int,(2,n))
+        x[1,:] = 1:n
+        for i=1:n
+            xgidx = xg .- xt[:,(k-1)*n+i]
+            col_norm = [norm(xgidx[:, j]) for j in 1:size(xg,2)]
+            ig = argmin(col_norm)
+            x[2,i] = ig
+        end
+        push!(loc_glob_idx, x)
+    end
+    return xg, loc_glob_idx
+end
+
+"""
+### SummationByParts.global_node_index_tet
+"""
+function global_node_index_tet(p::Int; T=Float64)
+    xh = tensor_lgl_hex_nodes(p)
+    xt = cube_to_tet_map(xh)
+    n = size(xh,2)
+
+    facet_node_idx = facet_nodes_cube(xh)
+    xg = copy(xt)
+    remove_idx = collect(Iterators.flatten([n.+facet_node_idx[1,:], 
+                                            (2*n).+facet_node_idx[2,:],
+                                            (2*n).+facet_node_idx[3,:],
+                                            (3*n).+facet_node_idx[1,:],
+                                            (3*n).+facet_node_idx[4,:],
+                                            (3*n).+facet_node_idx[6,:]]))
+    xg = xg[:, filter(x -> !(x in remove_idx), 1:size(xg, 2))]
+
+    loc_glob_idx = []
+    for k = 1:4
+        x = zeros(Int,(2,n))
+        x[1,:] = 1:n
+        for i=1:n
+            xgidx = xg .- xt[:,(k-1)*n+i]
+            col_norm = [norm(xgidx[:, j]) for j in 1:size(xg,2)]
+            ig = argmin(col_norm)
+            x[2,i] = ig
+        end
+        push!(loc_glob_idx, x)
+    end
+    return xg, loc_glob_idx
+end
+
+"""
+### SummationByParts.construct_zmatrix
+"""
+function construct_zmatrix(glob_idx::Array{T},i::Int,j::Int,nglob::Int) where T
+    ihat = glob_idx[2,i]
+    jhat = glob_idx[2,j]
+    ei = sparse(I,nglob,nglob)[:, ihat]
+    ej = sparse(I,nglob,nglob)[:, jhat]
+    z = ei*ej'
+    return z
+end
+
+"""
+### SummationByParts.construct_split_operator_tri
+"""
+function construct_split_operator_tri(p::Int; T=Float64)
+    Hs,Qs,Ds,Es = map_tensor_operators_to_tri(p)
+    xg, loc_glob_idx = global_node_index_tri(p)
+    n = size(Hs[1],1)
+    nglob = size(xg,2) 
+    dim = 2
+
+    H = spzeros(nglob,nglob)
+    Q = [spzeros(nglob,nglob),spzeros(nglob,nglob),spzeros(nglob,nglob)]
+    D = [spzeros(nglob,nglob),spzeros(nglob,nglob),spzeros(nglob,nglob)]
+    E = [spzeros(nglob,nglob),spzeros(nglob,nglob),spzeros(nglob,nglob)]
+    for k=1:dim+1
+        for i=1:n
+            for j=1:n 
+                glob_idx = loc_glob_idx[k]
+                z = construct_zmatrix(glob_idx,i,j,nglob)
+                if Hs[k][i,j]!=0.0
+                    H[:,:] += (Hs[k][i,j]*z)
+                end
+                for id=1:dim
+                    if Qs[k][i,j,id]!=0.0
+                        Q[id] += (Qs[k][i,j,id]*z)
+                    end
+                    if Es[k][i,j,id]!=0.0
+                        E[id] += (Es[k][i,j,id]*z)
+                    end
+                end
+            end
+        end
+    end
+    
+    for id=1:dim 
+        D[id] = inv(Matrix(H))*Q[id]
+    end
+    Q = [Matrix(m) for m in Q]
+    D = [Matrix(m) for m in D]
+    E = [Matrix(m) for m in E]
+    return Matrix(H),Q,D,E
+end
+
+"""
+### SummationByParts.construct_split_operator_tet
+"""
+function construct_split_operator_tet(p::Int; T=Float64)
+    Hs,Qs,Ds,Es = map_tensor_operators_to_tet(p)
+    xg, loc_glob_idx = global_node_index_tet(p)
+    n = size(Hs[1],1)
+    nglob = size(xg,2) 
+    dim = 3
+
+    H = spzeros(nglob,nglob)
+    Q = [spzeros(nglob,nglob),spzeros(nglob,nglob),spzeros(nglob,nglob)]
+    D = [spzeros(nglob,nglob),spzeros(nglob,nglob),spzeros(nglob,nglob)]
+    E = [spzeros(nglob,nglob),spzeros(nglob,nglob),spzeros(nglob,nglob)]
+    for k=1:dim+1
+        for i=1:n
+            for j=1:n 
+                glob_idx = loc_glob_idx[k]
+                z = construct_zmatrix(glob_idx,i,j,nglob)
+                if Hs[k][i,j]!=0.0
+                    H[:,:] += (Hs[k][i,j]*z)
+                end
+                for id=1:dim
+                    if Qs[k][i,j,id]!=0.0
+                        Q[id] += (Qs[k][i,j,id]*z)
+                    end
+                    if Es[k][i,j,id]!=0.0
+                        E[id] += (Es[k][i,j,id]*z)
+                    end
+                end
+            end
+        end
+    end
+    
+    for id=1:dim 
+        D[id] = inv(Matrix(H))*Q[id]
+    end
+    Q = [Matrix(m) for m in Q]
+    D = [Matrix(m) for m in D]
+    E = [Matrix(m) for m in E]
+    return Matrix(H),Q,D,E
 end
