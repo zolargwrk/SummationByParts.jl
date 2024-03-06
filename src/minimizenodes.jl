@@ -1796,18 +1796,17 @@ function get_tri_omega_lg()
 end
 
 # get_tri_omega_lg()
-
-# ---------------
+#  ---------------
 function get_tet_omega_lg()
-    p = 9
-    q = 2*p-1
+    p = 7                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+    q = 2*p-0                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
     qq = 2*p+2*mod(p,2)
     T = Float64
     vtx = [1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
 
     cuba, _ = SummationByParts.Cubature.getTetCubatureOmegaLG(qq)
     cub, res = SummationByParts.eliminate_nodes(cuba, p, q)
-    # cubb, _ = SummationByParts.Cubature.getTetCubatureOmegaLG(qq-2)
+    # cubb, _ = SummationByParts.Cubature.getTetCubat ureOmegaLG(qq-2)
     # cub = SummationByParts.combine_tet_cubs(cuba, cubb)
     # cub,res = SummationByParts.eliminate_nodes(cub, p, q)
 
@@ -1847,7 +1846,7 @@ function get_tet_omega_lg()
     checkInteriorNodeLocaton(cub)
 end
 
-# get_tet_omega_lg()
+get_tet_omega_lg()
 
 #---------------
 # function derive_tri_omega_lg()
@@ -1892,44 +1891,100 @@ end
 # derive_tri_omega_lg()
 
 #---------------
-vtx = T[-1 -1/sqrt(3); 1 -1/sqrt(3); 0 2/sqrt(3)]
-vtx_right = T[-1 -1; 1 -1; -1 1]
-p =20
-dim = 3
-# xs = SummationByParts.tensor_lgl_quad_nodes(p)
+# vtx = T[-1 -1/sqrt(3); 1 -1/sqrt(3); 0 2/sqrt(3)]
+# vtx_right = T[-1 -1; 1 -1; -1 1]
+# p = 2
+# dim = 2
+# opertype = "lgl"
+# n1d = 4*p+0
+# xs,_ = SummationByParts.tensor_quad_nodes(p)
+# xs,_ = SummationByParts.tensor_quad_nodes(p,opertype=opertype,n1d=n1d)
 # xt = SummationByParts.square_to_tri_map(xs)
 # xe = SummationByParts.perp_to_equi_tri_map(xt)
-xg,_= SummationByParts.global_node_index_tri(p)
-# SummationByParts.plot_tri_nodes(x=xe,vtx=vtx_right,write_title=false,label_nodes=false)
+# xg,_= SummationByParts.global_node_index_tri(p,opertype=opertype,n1d=n1d)
+# # xf,xfidx= SummationByParts.global_node_index_tri_facet(p)
+# SummationByParts.plot_tri_nodes(x=xe,vtx=vtx,write_title=false,label_nodes=false)
 
-vtx = [1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
-vtx_right_tet = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1];
-# xh = SummationByParts.tensor_lgl_hex_nodes(p)
+
+# vtx = [1 -sqrt(3)/3 -sqrt(6)/6; 0 2*sqrt(3)/3 -sqrt(6)/6; -1 -sqrt(3)/3 -sqrt(6)/6; 0 0 sqrt(6)/2]
+# vtx_right_tet = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1];
+# xh,_ = SummationByParts.tensor_hex_nodes(p,opertype=opertype,n1d=n1d)
 # xt = SummationByParts.cube_to_tet_map(xh)
 # xe = SummationByParts.perp_to_equi_tet_map(xt)
-# xg,_ = SummationByParts.global_node_index_tet(p)
+# xg,_ = SummationByParts.global_node_index_tet(p,opertype=opertype,n1d=n1d)
+# # xf,xfidx= SummationByParts.global_node_index_tet_facet(p)
 # SummationByParts.plotly_tet_nodes(x=xe, vtx = vtx)
 
-# H,Q,D,E = SummationByParts.tensor_operators(p,dim)
-# Hs,Qs,Ds,Es = SummationByParts.map_tensor_operators_to_tri(p)
-# Hs,Qs,Ds,Es = SummationByParts.map_tensor_operators_to_tet(p)
+# # H,Q,D,E = SummationByParts.tensor_operators(p,dim,opertype=opertype,n1d=n1d)
+# # Hs,Qs,Ds,Es,Ns = SummationByParts.map_tensor_operators_to_tri(p,opertype=opertype,n1d=n1d)
+# # Hs,Qs,Ds,Es,Ns = SummationByParts.map_tensor_operators_to_tet(p)
 
-H,Q,D,E = SummationByParts.construct_split_operator_tri(p)
-# H,Q,D,E = SummationByParts.construct_split_operator_tet(p)
+# # V, Vdx,Vdy = OrthoPoly.vandermonde(p, xg[1,:],xg[2,:])
 
-# @profview SummationByParts.construct_split_operator_tet(p)
+# # H,Q,D,E = SummationByParts.construct_split_operator_tri(p)
+# # H,Q,D,E = SummationByParts.construct_split_operator_tri(p,opertype=opertype,n1d=n1d)
+# # H,Q,D,E = SummationByParts.construct_split_operator_tet(p)
+# # H,Q,D,E = SummationByParts.construct_split_operator_tet(p,opertype=opertype,n1d=n1d)
+
+# # B,N,R,E2 = SummationByParts.construct_split_facet_operator_tri(p,opertype=opertype,n1d=n1d)
+# # B,N,R,E2 = SummationByParts.construct_split_facet_operator_tet(p,opertype=opertype,n1d=n1d)
+
+# # @profview SummationByParts.construct_split_operator_tet(p)
+
+# # oper = SummationByParts.getTriSBPOmega(degree=p)
+# # Qx = oper.Q[:,:,1]
+# # xg = SymCubatures.calcnodes(oper.cub,oper.vtx)
+# # w = SymCubatures.calcweights(oper.cub)
+
+# # oper = SummationByParts.getTetSBPOmega(degree=p)
+# # oper = SummationByParts.getTetSBPDiagE(degree=p)
+# # Qx = oper.Q[:,:,1]
+# # xg = SymCubatures.calcnodes(oper.cub,oper.vtx)
+# # w = SymCubatures.calcweights(oper.cub)
+
+# # n = (p+1)^dim
+# # k = 1
+# # Qx = Hs[k]*Ds[k][:,:,1]
+# # # Qx = Qs[1][:,:,1]
+# # w = diag(Hs[k])
+# # x = xt[1,(k-1)*n+1: (k-1)*n+n] 
+# # y = xt[2,(k-1)*n+1: (k-1)*n+n] #xt[2,1:n^2]
 
 
-# n = (p+1)^dim
-# k = 1
-# Qx = Hs[k]*Ds[k][:,:,1]
-# # Qx = Qs[1][:,:,1]
-# w = diag(Hs[k])
-# x = xt[1,(k-1)*n+1: (k-1)*n+n] 
-# y = xt[2,(k-1)*n+1: (k-1)*n+n] #xt[2,1:n^2]
+# # Qx = Q[1]
+# # w = diag(H)
+# # x = xg[1,:]
+# # y = xg[2,:]
+# # errs_x, rate_x, h_vec, errs_val= SummationByParts.test_accuracy(Qx, w, x, y, refine=6) 
+# # println(errs_x')
+# # println(rate_x')
 
-# Qx = Q[1]
-# w = diag(H)
-# x = xg[1,:]
-# y = xg[2,:]
-# errs_x, rate_x, h_vec, errs_val= SummationByParts.test_accuracy(Qx, w, x, y, refine=6) 
+# # Qx = Q[1]
+# # w = diag(H)
+# # x = xg[1,:]
+# # y = xg[2,:]
+# # z = xg[3,:]
+# # errs_x, rate_x, h_vec, errs_val= SummationByParts.test_accuracy(Qx, w, x, y, z, refine=6) 
+# # println(errs_x')
+# # println(rate_x')
+#-------------
+# p = 4
+# q = 2p
+# s = p + mod(p,2)
+# n = 2*(2*p)+4
+# dim=1
+# # cub,vtx = SummationByParts.Cubature.getLineCubatureGregory(q,N)
+# # w, Q, E = SummationByParts.buildoperators(cub, vtx, p)
+# # D = diagm(1.0./w)*Q[:,:,1]
+
+# # x = SymCubatures.calcnodes(cub,vtx)
+# # perm = sortperm(vec(x))
+# # x = x[perm]
+# # w = w[perm]
+# # Q[:,:,1]= Q[:,:,1][:,perm][perm,:]
+# # E[:,:,1]= E[:,:,1][:,perm][perm,:]
+
+# H,Q,E,D = SummationByParts.build_csbp_operators(p,n)
+
+# # errs_x, rate_x, h_vec, errs_val= SummationByParts.test_accuracy(Q[:,:,1], w, x, refine=6)
+# # rate_x

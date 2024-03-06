@@ -8,26 +8,74 @@ using SparseArrays
 
 """
 ### SummationByParts.tensor_lgl_quad_nodes
+
+Computes tensor-product nodes on a quadrilateral 
+**Inputs**
+* `p`: degree of the operator 
+* `opertype`: the type of 1d operator used to construct the SST-SBP method (lgl or csbp)
+* `n1d`: number of nodes in the 1D operator 
+
+**Outputs** 
+* `xy`: node coordinates
+* `w`: weights of the 1D operator 
 """
-function tensor_lgl_quad_nodes(p::Int)
-    qf = 2*(p+1)-3 
-    cub, vtx = SummationByParts.Cubature.quadrature(qf, internal=false)
-    x = sort(vec(SymCubatures.calcnodes(cub, vtx)))'
+function tensor_quad_nodes(p::Int;opertype::String="lgl", n1d::Int=-1)
+    if opertype=="lgl"
+        qf = 2*(p+1)-3 
+        cub, vtx = SummationByParts.Cubature.quadrature(qf, internal=false)
+    elseif opertype=="csbp"
+        qf = 2p
+        if n1d==-1
+            n1d=4*p 
+        end
+        cub, vtx = SummationByParts.Cubature.getLineCubatureGregory(qf, n1d)
+    else 
+        error("Operator not implemented. Should choose between 'lgl' and 'csbp'.")
+    end
+    x = vec(SymCubatures.calcnodes(cub, vtx))
+    perm = sortperm(x)
+    x = x[perm]'
     y = x[1] .*ones(1,cub.numnodes)
     xy = vcat(x,y)
     for i = 1:cub.numnodes
         xy = hcat(xy, vcat(x,x[i].*ones(1,cub.numnodes)))
     end
-    return xy[:,cub.numnodes+1:end] 
+    w1 = (vec(SymCubatures.calcweights(cub)))[perm]
+    return xy[:,cub.numnodes+1:end], w1
 end
 
 """
 ### SummationByParts.tensor_lgl_hex_nodes
+
+Computes tensor-product nodes on a hexahedron
+**Inputs**
+* `p`: degree of the operator 
+* `opertype`: the type of 1d operator used to construct the SST-SBP method (lgl or csbp)
+* `n1d`: number of nodes in the 1D operator 
+
+**Outputs** 
+* `xyz`: node coordinates
+* `w`: weights of the 1D operator 
 """
-function tensor_lgl_hex_nodes(p::Int)
-    qf = 2*(p+1)-3 
-    cub, vtx = SummationByParts.Cubature.quadrature(qf, internal=false)
-    x = sort(vec(SymCubatures.calcnodes(cub, vtx)))'
+function tensor_hex_nodes(p::Int; opertype::String="lgl", n1d::Int=-1)
+    # qf = 2*(p+1)-3 
+    # cub, vtx = SummationByParts.Cubature.quadrature(qf, internal=false)
+    if opertype=="lgl"
+        qf = 2*(p+1)-3 
+        cub, vtx = SummationByParts.Cubature.quadrature(qf, internal=false)
+    elseif opertype=="csbp"
+        qf = 2p
+        if n1d==-1
+            n1d=4*p 
+        end
+        cub, vtx = SummationByParts.Cubature.getLineCubatureGregory(qf, n1d)
+    else 
+        error("Operator not implemented. Should choose between 'lgl' and 'csbp'.")
+    end
+    # x = sort(vec(SymCubatures.calcnodes(cub, vtx)))'
+    x = vec(SymCubatures.calcnodes(cub, vtx))
+    perm = sortperm(x)
+    x = x[perm]'
     y = x[1] .*ones(1,cub.numnodes)
     z = x[1] .*ones(1,cub.numnodes)
     xyz = vcat(x,y,z)
@@ -38,7 +86,8 @@ function tensor_lgl_hex_nodes(p::Int)
         end
     end
     xyz[[2,3],:] = xyz[[3,2],:]
-    return xyz[:,cub.numnodes+1:end]
+    w1 = (vec(SymCubatures.calcweights(cub)))[perm]
+    return xyz[:,cub.numnodes+1:end], w1
 end
 
 """
@@ -135,46 +184,6 @@ function get_hex_vert(;T=Float64)
                 [v10; v4; v12; v8; v14; v9; v15; v13]]
     return hex_vert
 end
-
-# function get_hex_vert()
-#     v1 = [-1 -1/sqrt(3) -sqrt(6)/6]
-#     v2 = [1 -1/sqrt(3) -sqrt(6)/6]
-#     v3 = [0 2/sqrt(3) -sqrt(6)/6]
-#     v4 = [0 0 sqrt(6)/2]
-#     v5 = [1/2 sqrt(3)/6 -sqrt(6)/6]
-#     v6 = [-1/2 sqrt(3)/6 -sqrt(6)/6]
-#     v7 = [0 -1/sqrt(3) -sqrt(6)/6]
-#     v8 = [0 1/sqrt(3) sqrt(6)/6]
-#     v9 = [-1/2 -1/(2*sqrt(3)) sqrt(6)/6]
-#     v10 = [1/2 -1/(2*sqrt(3)) sqrt(6)/6]
-#     v11 = [0 0 -sqrt(6)/6]
-#     v12 = [1/3 sqrt(3)/9 sqrt(6)/18]
-#     v13 = [-1/3 sqrt(3)/9 sqrt(6)/18]
-#     v14 = [0 -2*sqrt(3)/9 sqrt(6)/18]
-#     v15 = [0 0 0]
-#     # hex_vert_equi = [[v2; v5; v11; v7; v14; v10; v12; v15],
-#     #                  [v3; v6; v11; v5; v12; v8; v13; v15],
-#     #                  [v1; v7; v11; v6; v13; v9; v14; v15],
-#     #                  [v4; v8; v13; v9; v14; v10; v12; v15]]
-#     # hex_vert_equi = [[v2; v5; v7; v11; v10; v12; v14; v15],
-#     #                  [v5; v3; v11; v6; v12; v8; v15; v13],
-#     #                  [v7; v11; v1; v6; v14; v15; v9; v13],
-#     #                  [v10; v12; v14; v15; v9; v13; v4; v8]]
-#     hex_vert_equi = [[v2; v5; v7; v11; v10; v12; v14; v15],
-#                      [v5; v3; v11; v6; v12; v8; v15; v13],
-#                      [v7; v11; v1; v6; v14; v15; v9; v13],
-#                      [v10; v4; v12; v8; v14; v9; v15; v13]]
-#     # hex_vert_equi = [[v7; v2; v11; v5; v14; v10; v15; v12],
-#     #                  [v5; v3; v11; v6; v12; v8; v15; v13],
-#     #                  [v7; v11; v1; v6; v14; v15; v9; v13],
-#     #                  [v10; v4; v12; v8; v14; v9; v15; v13]]
-#     hex_vert = []
-#     for i = 1:4 
-#         vert = Matrix((hex_vert_equi[i])')
-#         push!(hex_vert, Matrix(equi_to_perp_tet_map(vert)'))
-#     end
-#     return hex_vert
-# end
 
 """
 ### SummationByParts.cube_to_tet_map.jl 
@@ -386,14 +395,31 @@ end
 """
 ### SummationByParts.tensor_operators
 """
-function tensor_operators(p::Int, dim::Int; T=Float64)
-    n = p+1
-    oper_lgl = getLineSegSBPLobbato(degree=p)
-    perm = sortperm(vec(SymCubatures.calcnodes(oper_lgl.cub, oper_lgl.vtx)))
-    Q1 = oper_lgl.Q[:,:,1][:,perm][perm,:]
-    H1 = diagm(vec(oper_lgl.w)[perm])
-    D1 = inv(H1)*Q1[:,:,1]
-    E1 = Q1 + Q1'
+function tensor_operators(p::Int, dim::Int; opertype::String="lgl", n1d::Int=-1, T=Float64)
+    # n = p+1
+    # oper_lgl = getLineSegSBPLobbato(degree=p)
+    # perm = sortperm(vec(SymCubatures.calcnodes(oper_lgl.cub, oper_lgl.vtx)))
+    # Q1 = oper_lgl.Q[:,:,1][:,perm][perm,:]
+    # H1 = diagm(vec(oper_lgl.w)[perm])
+
+    if opertype=="lgl"
+        n = p+1
+        oper_lgl = getLineSegSBPLobbato(degree=p)
+        perm = sortperm(vec(SymCubatures.calcnodes(oper_lgl.cub, oper_lgl.vtx)))
+        Q1 = oper_lgl.Q[:,:,1][:,perm][perm,:]
+        H1 = diagm(vec(oper_lgl.w)[perm])
+        D1 = inv(H1)*Q1[:,:,1]
+        E1 = Q1 + Q1'
+    elseif opertype=="csbp"
+        if n1d==-1
+            n1d=4*p 
+        end
+        n=n1d
+        H1,Q1,E1,D1 = build_csbp_operators(p, n1d)
+    else 
+        error("Operator not implemented. Should choose between 'lgl' and 'csbp'.")
+    end
+
     In = I(n)
     tR = zeros(T,(n,1)); tR[end] = 1.0
     tL = zeros(T,(n,1)); tL[1] = 1.0
@@ -514,17 +540,17 @@ end
 """
 ### SummationByParts.map_tensor_operators_to_tri
 """
-function map_tensor_operators_to_tri(p::Int; T=Float64)
+function map_tensor_operators_to_tri(p::Int; opertype::String="lgl", n1d::Int=-1, T=Float64)
     dim = 2
-    xs = tensor_lgl_quad_nodes(p) #nodes on square
+    xs, B = tensor_quad_nodes(p,opertype=opertype,n1d=n1d) #nodes on square
     n = size(xs,2)
     nf = convert(Int, sqrt(n))
 
-    qf = 2*(p+1)-3 
-    cub_lgl, vtx_lgl = SummationByParts.Cubature.quadrature(qf, internal=false)
-    perm = sortperm(vec(SymCubatures.calcnodes(cub_lgl, vtx_lgl)))
-    B = SymCubatures.calcweights(cub_lgl)[perm]
-
+    # qf = 2*(p+1)-3 
+    # cub_lgl, vtx_lgl = SummationByParts.Cubature.quadrature(qf, internal=false)
+    # perm = sortperm(vec(SymCubatures.calcnodes(cub_lgl, vtx_lgl)))
+    # B = SymCubatures.calcweights(cub_lgl)[perm]
+    
     quad_vert = get_quad_vert()
     Nhat = normals_square(xs)
     facet_node_idx = facet_nodes_square(xs)
@@ -552,7 +578,7 @@ function map_tensor_operators_to_tri(p::Int; T=Float64)
         push!(Ns, N)
     end
 
-    Hhat, Qhat, Dhat, Ehat, Rhat = tensor_operators(p, dim, T=T)
+    Hhat, Qhat, Dhat, Ehat, Rhat = tensor_operators(p, dim, opertype=opertype, n1d=n1d, T=T)
     Es = []
     for k=1:3
         E = zeros(T, (n,n,dim))
@@ -587,23 +613,23 @@ function map_tensor_operators_to_tri(p::Int; T=Float64)
         push!(Ds, D)
     end 
 
-    return Hs,Qs,Ds,Es
+    return Hs,Qs,Ds,Es,Ns
 end
 
 """
 ### SummationByParts.map_tensor_operators_to_tet
 """
-function map_tensor_operators_to_tet(p::Int; T=Float64)
+function map_tensor_operators_to_tet(p::Int; opertype::String="lgl", n1d::Int=-1, T=Float64)
     dim = 3
-    xc = tensor_lgl_hex_nodes(p)   #nodes on cube
+    xc, B = tensor_hex_nodes(p, opertype=opertype, n1d=n1d)   #nodes on cube
     n = size(xc,2)
     n1 = round(n^(1/3))
     nf = convert(Int, round(n1^2))
 
-    qf = 2*(p+1)-3 
-    cub_lgl, vtx_lgl = SummationByParts.Cubature.quadrature(qf, internal=false)
-    perm = sortperm(vec(SymCubatures.calcnodes(cub_lgl, vtx_lgl)))
-    B = SymCubatures.calcweights(cub_lgl)[perm]
+    # qf = 2*(p+1)-3 
+    # cub_lgl, vtx_lgl = SummationByParts.Cubature.quadrature(qf, internal=false)
+    # perm = sortperm(vec(SymCubatures.calcnodes(cub_lgl, vtx_lgl)))
+    # B = SymCubatures.calcweights(cub_lgl)[perm]
     B = vec(kron(B,B))
 
     hex_vert = get_hex_vert()
@@ -637,7 +663,7 @@ function map_tensor_operators_to_tet(p::Int; T=Float64)
         push!(Ns, N)
     end
 
-    Hhat, Qhat, Dhat, Ehat, Rhat = tensor_operators(p, dim, T=T)
+    Hhat, Qhat, Dhat, Ehat, Rhat = tensor_operators(p, dim, opertype=opertype, n1d=n1d, T=T)
     Es = []
     for k=1:dim+1
         E = zeros(T, (n,n,dim))
@@ -678,14 +704,14 @@ function map_tensor_operators_to_tet(p::Int; T=Float64)
         push!(Ds, D)
     end 
 
-    return Hs,Qs,Ds,Es
+    return Hs,Qs,Ds,Es,Ns
 end
 
 """
 ### SummationByParts.global_node_index_tri
 """
-function global_node_index_tri(p::Int; T=Float64)
-    xs = tensor_lgl_quad_nodes(p)
+function global_node_index_tri(p::Int;opertype::String="lgl",n1d::Int=-1, T=Float64)
+    xs,_ = tensor_quad_nodes(p,opertype=opertype,n1d=n1d)
     xt = square_to_tri_map(xs)
     n = size(xs,2)
 
@@ -712,8 +738,8 @@ end
 """
 ### SummationByParts.global_node_index_tet
 """
-function global_node_index_tet(p::Int; T=Float64)
-    xh = tensor_lgl_hex_nodes(p)
+function global_node_index_tet(p::Int; opertype::String="lgl",n1d::Int=-1, T=Float64)
+    xh,_ = tensor_hex_nodes(p,opertype=opertype,n1d=n1d)
     xt = cube_to_tet_map(xh)
     n = size(xh,2)
 
@@ -750,38 +776,38 @@ function construct_zmatrix(glob_idx::Array{T},i::Int,j::Int,nglob::Int) where T
     jhat = glob_idx[2,j]
     ei = sparse(I,nglob,nglob)[:, ihat]
     ej = sparse(I,nglob,nglob)[:, jhat]
-    z = ei*ej'
-    return z
+    Z = ei*ej'
+    return Z
 end
 
 """
 ### SummationByParts.construct_split_operator_tri
 """
-function construct_split_operator_tri(p::Int; T=Float64)
-    Hs,Qs,Ds,Es = map_tensor_operators_to_tri(p)
-    xg, loc_glob_idx = global_node_index_tri(p)
+function construct_split_operator_tri(p::Int; opertype::String="lgl", n1d::Int=-1, T=Float64)
+    Hs,Qs,Ds,Es,_ = map_tensor_operators_to_tri(p, opertype=opertype, n1d=n1d)
+    xg, loc_glob_idx = global_node_index_tri(p, opertype=opertype, n1d=n1d)
     n = size(Hs[1],1)
     nglob = size(xg,2) 
     dim = 2
 
     H = spzeros(nglob,nglob)
-    Q = [spzeros(nglob,nglob),spzeros(nglob,nglob),spzeros(nglob,nglob)]
-    D = [spzeros(nglob,nglob),spzeros(nglob,nglob),spzeros(nglob,nglob)]
-    E = [spzeros(nglob,nglob),spzeros(nglob,nglob),spzeros(nglob,nglob)]
+    Q = [spzeros(nglob,nglob),spzeros(nglob,nglob)]
+    D = [spzeros(nglob,nglob),spzeros(nglob,nglob)]
+    E = [spzeros(nglob,nglob),spzeros(nglob,nglob)]
     for k=1:dim+1
         for i=1:n
             for j=1:n 
                 glob_idx = loc_glob_idx[k]
-                z = construct_zmatrix(glob_idx,i,j,nglob)
+                Z = construct_zmatrix(glob_idx,i,j,nglob)
                 if Hs[k][i,j]!=0.0
-                    H[:,:] += (Hs[k][i,j]*z)
+                    H[:,:] += (Hs[k][i,j]*Z)
                 end
                 for id=1:dim
                     if Qs[k][i,j,id]!=0.0
-                        Q[id] += (Qs[k][i,j,id]*z)
+                        Q[id] += (Qs[k][i,j,id]*Z)
                     end
                     if Es[k][i,j,id]!=0.0
-                        E[id] += (Es[k][i,j,id]*z)
+                        E[id] += (Es[k][i,j,id]*Z)
                     end
                 end
             end
@@ -800,9 +826,9 @@ end
 """
 ### SummationByParts.construct_split_operator_tet
 """
-function construct_split_operator_tet(p::Int; T=Float64)
-    Hs,Qs,Ds,Es = map_tensor_operators_to_tet(p)
-    xg, loc_glob_idx = global_node_index_tet(p)
+function construct_split_operator_tet(p::Int; opertype::String="lgl", n1d::Int=-1, T=Float64)
+    Hs,Qs,Ds,Es,_ = map_tensor_operators_to_tet(p, opertype=opertype, n1d=n1d)
+    xg, loc_glob_idx = global_node_index_tet(p, opertype=opertype, n1d=n1d)
     n = size(Hs[1],1)
     nglob = size(xg,2) 
     dim = 3
@@ -815,16 +841,16 @@ function construct_split_operator_tet(p::Int; T=Float64)
         for i=1:n
             for j=1:n 
                 glob_idx = loc_glob_idx[k]
-                z = construct_zmatrix(glob_idx,i,j,nglob)
+                Z = construct_zmatrix(glob_idx,i,j,nglob)
                 if Hs[k][i,j]!=0.0
-                    H[:,:] += (Hs[k][i,j]*z)
+                    H[:,:] += (Hs[k][i,j]*Z)
                 end
                 for id=1:dim
                     if Qs[k][i,j,id]!=0.0
-                        Q[id] += (Qs[k][i,j,id]*z)
+                        Q[id] += (Qs[k][i,j,id]*Z)
                     end
-                    if Es[k][i,j,id]!=0.0
-                        E[id] += (Es[k][i,j,id]*z)
+                    if Es[k][i,j,id]!=0.0 
+                        E[id] += (Es[k][i,j,id]*Z)
                     end
                 end
             end
@@ -838,4 +864,395 @@ function construct_split_operator_tet(p::Int; T=Float64)
     D = [Matrix(m) for m in D]
     E = [Matrix(m) for m in E]
     return Matrix(H),Q,D,E
+end
+
+"""
+### SummationByParts.global_node_index_tri_facet
+"""
+function global_node_index_tri_facet(p::Int;opertype::String="lgl",n1d::Int=-1, T=Float64)
+    dim = 2
+    xs,_ = tensor_quad_nodes(p, opertype=opertype, n1d=n1d)
+    xt = square_to_tri_map(xs)
+    xg,_ = global_node_index_tri(p, opertype=opertype, n1d=n1d)
+    n = size(xs,2)
+    n1 = convert(Int, round(n^(1/dim)))
+    nf = n1^(dim-1)
+
+    facet_node_idx = facet_nodes_square(xs)
+    xf = zeros(T, (dim, dim*nf-1, dim+1))
+    keep_idx = []
+    push!(keep_idx, collect(Iterators.flatten([(n).+facet_node_idx[2,:], ((2*n).+facet_node_idx[4,1:end-1])])))
+    push!(keep_idx, collect(Iterators.flatten([((2*n).+facet_node_idx[1,:]), (facet_node_idx[1,1:end-1])])))
+    push!(keep_idx, collect(Iterators.flatten([facet_node_idx[3,:], (n).+facet_node_idx[3,2:end]])))
+    for k=1:3
+        xf[:,:,k] = xt[:,keep_idx[k]]
+    end
+    xfall= zeros(T,(dim,nf,dim*(dim+1)))
+    xfall[:,:,1] = xt[:,(n).+facet_node_idx[2,:]]
+    xfall[:,:,2] = xt[:,((2*n).+facet_node_idx[4,:])]
+    xfall[:,:,3] = xt[:,((2*n).+facet_node_idx[1,:])]
+    xfall[:,:,4] = xt[:,(facet_node_idx[1,:])]
+    xfall[:,:,5] = xt[:,facet_node_idx[3,:]]
+    xfall[:,:,6] = xt[:,(n).+facet_node_idx[3,:]]
+
+    loc_glob_facet_idx = []
+    for k = 1:(dim*(dim+1))
+        x = zeros(Int,(3,nf))
+        x[1,:] = 1:nf
+        for i=1:nf
+            xfidx = xf[:,:,convert(Int,ceil(k/dim))] .- xfall[:,i,k] 
+            col_norm = [norm(xfidx[:, j]) for j in 1:size(xf,2)]
+            ig = argmin(col_norm)
+            x[2,i] = ig
+        end
+        for i=1:nf
+            xgidx = xg .- xfall[:,i,k]
+            col_norm = [norm(xgidx[:, j]) for j in 1:size(xg,2)]
+            ig = argmin(col_norm)
+            x[3,i] = ig
+        end
+        push!(loc_glob_facet_idx, x)
+    end
+    return xf, loc_glob_facet_idx
+end
+
+"""
+### SummationByParts.global_node_index_tet_facet
+"""
+function global_node_index_tet_facet(p::Int;opertype::String="lgl",n1d::Int=-1, T=Float64)
+    dim = 3
+    xh,_= tensor_hex_nodes(p, opertype=opertype, n1d=n1d)
+    xt = cube_to_tet_map(xh)
+    xg,_ = global_node_index_tet(p, opertype=opertype, n1d=n1d)
+    n = size(xh,2)
+    n1 = convert(Int, round(n^(1/dim)))
+    nf = n1^(dim-1)
+
+    facet_node_idx = facet_nodes_cube(xh)
+    xf = zeros(T, (dim, dim*nf-3*n1+1, dim+1))
+    keep_idx = []
+    push!(keep_idx, collect(Iterators.flatten([facet_node_idx[3,:],
+                                               (n.+facet_node_idx[3,:]), 
+                                               ((3*n).+facet_node_idx[5,:])])))
+    push!(keep_idx, collect(Iterators.flatten([(n.+facet_node_idx[2,:]), 
+                                                (2*n).+(facet_node_idx[4,:]),
+                                                (3*n).+(facet_node_idx[2,:])])))
+    push!(keep_idx, collect(Iterators.flatten([(facet_node_idx[1,:]), 
+                                                (2*n).+(facet_node_idx[1,:]),
+                                                (3*n).+(facet_node_idx[3,:])])))
+    push!(keep_idx, collect(Iterators.flatten([(facet_node_idx[5,:]), 
+                                                (n).+(facet_node_idx[5,:]),
+                                                (2*n).+(facet_node_idx[5,:])])))
+
+    unique_idx = [[keep_idx[1][1]],[keep_idx[2][1]],[keep_idx[3][1]],[keep_idx[4][1]]]
+    for k=1:dim+1
+        xtf = xt[:,keep_idx[k]]
+        for i=2:nf*dim
+            xtf_temp = xtf .- xtf[:,i]
+            col_norm = [norm(xtf_temp[:, j]) for j in 1:size(xtf,2)]
+            idx = argmin(col_norm[1:(i-1)])
+            if norm(xtf_temp[:,idx]) > 1e-14
+                push!(unique_idx[k],keep_idx[k][i])
+            end
+        end
+    end
+
+    for k=1:dim+1
+        xf[:,:,k] = xt[:,unique_idx[k]]
+    end
+    xfall= zeros(T,(dim,nf,dim*(dim+1)))
+    xfall[:,:,1] = xt[:,facet_node_idx[3,:]]
+    xfall[:,:,2] = xt[:,(n.+facet_node_idx[3,:])]
+    xfall[:,:,3] = xt[:,((3*n).+facet_node_idx[5,:])]
+    xfall[:,:,4] = xt[:,(n.+facet_node_idx[2,:])]
+    xfall[:,:,5] = xt[:,(2*n).+(facet_node_idx[4,:])]
+    xfall[:,:,6] = xt[:,(3*n).+(facet_node_idx[2,:])]
+    xfall[:,:,7] = xt[:,(facet_node_idx[1,:])]
+    xfall[:,:,8] = xt[:,(2*n).+(facet_node_idx[1,:])]
+    xfall[:,:,9] = xt[:,(3*n).+(facet_node_idx[3,:])]
+    xfall[:,:,10] = xt[:,(facet_node_idx[5,:])]
+    xfall[:,:,11] = xt[:,(n).+(facet_node_idx[5,:])]
+    xfall[:,:,12] = xt[:,(2*n).+(facet_node_idx[5,:])]
+
+    loc_glob_facet_idx = []
+    for k = 1:(dim*(dim+1))
+        x = zeros(Int,(3,nf))
+        x[1,:] = 1:nf
+        for i=1:nf
+            xfidx = xf[:,:,convert(Int,ceil(k/dim))] .- xfall[:,i,k] 
+            col_norm = [norm(xfidx[:, j]) for j in 1:size(xf,2)]
+            ig = argmin(col_norm)
+            x[2,i] = ig
+        end
+        for i=1:nf
+            xgidx = xg .- xfall[:,i,k]
+            col_norm = [norm(xgidx[:, j]) for j in 1:size(xg,2)]
+            ig = argmin(col_norm)
+            x[3,i] = ig
+        end
+        push!(loc_glob_facet_idx, x)
+    end
+    return xf, loc_glob_facet_idx
+end
+
+"""
+### SummationByParts.construct_split_facet_operator_tri
+"""
+function construct_split_facet_operator_tri(p::Int; opertype::String="lgl", n1d::Int=-1, T=Float64)
+    dim = 2 
+    # qf = 2*(p+1)-3 
+    # cub_lgl, vtx_lgl = SummationByParts.Cubature.quadrature(qf, internal=false)
+    # perm = sortperm(vec(SymCubatures.calcnodes(cub_lgl, vtx_lgl)))
+    # Bhat = SymCubatures.calcweights(cub_lgl)[perm]
+    _, Bhat = tensor_quad_nodes(p,opertype=opertype,n1d=n1d)
+
+    _,_,_,_,Nhat = map_tensor_operators_to_tri(p, opertype=opertype, n1d=n1d)
+    nf = length(Bhat)
+    n = (dim+1)*nf^dim - (dim+dim^(dim-2))*nf^(dim-1) + (dim-2)*((dim+1)*nf - 2) + 1
+    # N_idx = [2 2; 3 1; 1 3] #first column contains element number, and second column contains facet number of the element
+
+    xf, loc_glob_idx = global_node_index_tri_facet(p, opertype=opertype, n1d=n1d)
+    nglob = size(xf,2) 
+    B = zeros(T,(nglob,nglob,dim+1))
+    for k=1:dim+1
+        for i=1:dim
+            glob_idx = loc_glob_idx[(k-1)*dim+i]
+            for j=1:nf
+                Z = construct_zmatrix(glob_idx,j,j,nglob)
+                B[:,:,k] += (Bhat[j]*Z)
+            end
+        end
+    end
+    
+    # N = ones(T, (dim, size(xf,2),dim+1))
+    # for k=1:dim+1
+    #     for i=1:dim 
+    #         N[i,:,k] = Nhat[N_idx[k,1]][i,1,N_idx[k,2]] * N[i,:,k]
+    #     end
+    # end
+
+    N_idx = [[2 2; 3 4],[3 1; 1 1],[1 3; 2 3]]
+    N = zeros(T, (dim, nglob,dim+1))
+    for id=1:dim
+        for k=1:dim+1
+            jj = dim*(k-1)
+            idx_vec=(collect(Iterators.flatten([loc_glob_idx[jj+1][2,:],loc_glob_idx[jj+2][2,:]])))
+            idx = [findfirst(isequal(num), idx_vec) for num in 1:nglob]
+            N[id,:,k] = collect(Iterators.flatten([Nhat[N_idx[k][1,1]][id,:,N_idx[k][1,2]],
+                                                   Nhat[N_idx[k][2,1]][id,:,N_idx[k][2,2]]]))[idx]
+        end
+    end
+
+    R = zeros(T, (nglob,n,dim+1))
+    for k=1:dim+1 
+        jj = dim*(k-1)
+        loc_idx = unique(collect(Iterators.flatten([loc_glob_idx[jj+1][2,:],loc_glob_idx[jj+2][2,:]])))
+        glob_idx = unique(collect(Iterators.flatten([loc_glob_idx[jj+1][3,:],loc_glob_idx[jj+2][3,:]])))
+        for i=1:nglob
+            R[loc_idx[i],glob_idx[i],k] = 1.0
+        end 
+    end
+
+    E = zeros(T, (n,n,dim))
+    for i=1:dim 
+        for k=1:dim+1
+            E[:,:,i] += R[:,:,k]'*diagm(N[i,:,k])*B[:,:,k]*R[:,:,k]
+        end
+    end
+    return B, N, R, E
+end
+
+"""
+### SummationByParts.construct_split_facet_operator_tet
+"""
+function construct_split_facet_operator_tet(p::Int; opertype::String="lgl", n1d::Int=-1, T=Float64)
+    dim = 3 
+    # qf = 2*(p+1)-3 
+    # cub_lgl, vtx_lgl = SummationByParts.Cubature.quadrature(qf, internal=false)
+    # perm = sortperm(vec(SymCubatures.calcnodes(cub_lgl, vtx_lgl)))
+    # B1 = SymCubatures.calcweights(cub_lgl)[perm]
+    _, B1 = tensor_quad_nodes(p,opertype=opertype,n1d=n1d)
+
+    Bhat = kron(diagm(B1),diagm(B1))
+    _,_,_,_,Nhat = map_tensor_operators_to_tet(p,opertype=opertype,n1d=n1d)
+    n1 = length(B1)
+    nf = n1^(dim-1)
+    n = (dim+1)*n1^dim - (dim+dim^(dim-2))*n1^(dim-1) + (dim-2)*((dim+1)*n1 - 2) + 1
+    # N_idx = [1 3; 2 2; 3 1; 1 5] #first column contains element number, and second column contains facet number of the element
+    # N_idx = [[1 3; 2 3; 4 5],[2 2; 3 4; 4 2],[1 1; 3 1; 4 3],[1 5; 2 5; 3 5]]
+    N_idx = [[1 3; 2 3; 4 5],[2 2; 3 4; 4 2],[1 1; 3 1; 4 3],[1 5; 2 5; 3 5]]
+    
+    xf, loc_glob_idx = global_node_index_tet_facet(p,opertype=opertype,n1d=n1d)
+    nglob = size(xf,2) 
+    B = zeros(T,(nglob,nglob,dim+1))
+    N = zeros(T, (dim, nglob,dim+1))
+    for k=1:dim+1
+        for i=1:dim
+            glob_idx = loc_glob_idx[(k-1)*dim+i]
+            for j=1:nf
+                Z = construct_zmatrix(glob_idx,j,j,nglob)
+                B[:,:,k] += (Bhat[j,j]*Z)
+            end
+        end
+    end
+    
+    for id=1:dim
+        for k=1:dim+1
+            jj = dim*(k-1)
+            idx_vec=(collect(Iterators.flatten([loc_glob_idx[jj+1][2,:],loc_glob_idx[jj+2][2,:],loc_glob_idx[jj+3][2,:]])))
+            idx = [findfirst(isequal(num), idx_vec) for num in 1:nglob]
+            N[id,:,k] = collect(Iterators.flatten([Nhat[N_idx[k][1,1]][id,:,N_idx[k][1,2]],
+                                                   Nhat[N_idx[k][2,1]][id,:,N_idx[k][2,2]],
+                                                   Nhat[N_idx[k][3,1]][id,:,N_idx[k][3,2]]]))[idx]
+        end
+    end
+    # N = ones(T, (dim, size(xf,2),dim+1))
+    # for k=1:dim+1
+    #     for i=1:dim 
+    #         N[i,:,k] = Nhat[N_idx[k,1]][i,:,N_idx[k,2]] * N[i,:,k]
+    #     end
+    # end
+
+    R = zeros(T, (nglob,n,dim+1))
+    for k=1:dim+1 
+        jj = dim*(k-1)
+        loc_idx = unique(collect(Iterators.flatten([loc_glob_idx[jj+1][2,:],loc_glob_idx[jj+2][2,:],loc_glob_idx[jj+3][2,:]])))
+        glob_idx = unique(collect(Iterators.flatten([loc_glob_idx[jj+1][3,:],loc_glob_idx[jj+2][3,:],loc_glob_idx[jj+3][3,:]])))
+        for i=1:nglob
+            R[loc_idx[i],glob_idx[i],k] = 1.0
+        end 
+    end
+
+    # xg, _ = global_node_index_tet(p)
+    E = zeros(T, (n,n,dim))
+    for i=1:dim 
+        for k=1:dim+1
+            E[:,:,i] += R[:,:,k]'*diagm(N[i,:,k])*B[:,:,k]*R[:,:,k]
+        end
+    end
+    return B, N, R, E
+end
+
+"""
+### SummationByParts.stat_sst_sbp
+
+Returns DOF and numbor of nonzero elements for SST SBP operators
+
+**Inputs**
+* `p`: degree of the operator 
+* `dim`: dimesion (2d or 3d)
+* `opertype`: the type of 1d operator used to construct the SST-SBP method (lgl or csbp)
+* `n1d`: number of nodes in the 1D operator 
+
+**Outputs** 
+* `dof`: degrees of freedom in the element (number of nodes)
+* `nnz`: number of nonzero elements in the derivative matrix
+"""
+function stat_sst_sbp(p::Int,dim::Int; opertype::String="lgl", n1d::Int=-1)
+    if opertype=="lgl"
+        n1=p+1
+        nn = n1
+    elseif opertype=="csbp"
+        if n1d==-1
+            n1d=4*p 
+        end
+        n1=n1d 
+        nn = 2*p
+    else 
+        error("Operator not implemented. Should choose between 'lgl' and 'csbp'.")
+    end
+    # n1 = p+1
+    dof = (dim+1)*n1^dim - (dim+dim^(dim-2))*n1^(dim-1) + (dim-2)*((dim+1)*n1 - 2) + 1
+    # nnz = (dim*p + 1)*dof
+    if opertype=="lgl"
+        nnz = (nn+(nn-1)*(dim-1))*dof
+    elseif opertype=="csbp"
+        nnz = (nn+(nn-1)*(dim-1))*dof #(4*p*(dim+1)*(2*dim)) + (nn+(nn-1)*(dim-1))*(dof-(4*p*(dim+1)*(2*dim)))
+    end
+    return dof, nnz
+end
+
+"""
+### SummationByParts.csbp_interior_operators
+"""
+function csbp_interior_operators(p::Int; T=Float64)
+    s = convert(Int,p/2) #+ mod(p,2)
+    m = 2*s+1
+    r = s+2 #convert(Int, ceil(s/2))+2
+    Qint = zeros(T,(1,m))
+    if p <= 2
+        Qint[r:end] = T[1/2]
+    elseif p<=4
+        Qint[r:end] = T[8,-1]./12
+    elseif p<=6
+        Qint[r:end] = T[45,-9,1]./60
+    elseif p<=8
+        Qint[r:end] = T[672,-168,32,-3]./840
+    elseif p<=10
+        Qint[r:end] = T[2100,-600,150,-25,2]./2520
+    end
+
+    Qint[1:r-2] = -reverse(Qint[r:end])
+    return Qint
+end
+"""
+### SummationByParts.build_csbp_operators
+"""
+function build_csbp_operators(p::Int,n::Int; T=Float64)
+    @assert(n >= 2*(2*p))
+    q = 2*p
+
+    cub,vtx = SummationByParts.Cubature.getLineCubatureGregory(q,n)
+    x = SymCubatures.calcnodes(cub,vtx)
+    w = SymCubatures.calcweights(cub)
+    perm = sortperm(vec(x))
+    x = x[perm]
+    w = w[perm]
+
+    s = p
+    Q = zeros(T, (n,n))
+    Qint = csbp_interior_operators(2*p)
+    for i=1:n 
+        if i>s && i<=n-s
+            Q[i,i-s:i+s] = Qint 
+        end
+    end
+
+    V, Vdx = OrthoPoly.vandermonde(p, x)
+    r = 2*s
+    Qhat = Q[1:r,1:r]
+    Hhat = diagm(w[1:r])
+    Ehat = zeros(T,(n,n))[1:r,1:r]; Ehat[1,1]=-1.0; 
+    Dhat = (diagm(1.0./w)*Q)[1:r,r+1:r+s]
+    Vhat = V[1:r,:]
+    Vdxhat = Vdx[1:r,:]
+    Ahat = (Vdxhat - Dhat*V[r+1:r+s,:])
+
+    Qhat = pocs(Qhat,Hhat,Ehat,Vhat,Ahat)
+    Q[1:r,1:r] = Qhat 
+    Q[end-r+1:end,end-r+1:end] = -reverse(Qhat)
+    H = diagm(w)
+    E = zeros(T,(n,n)); E[1,1]=-1.0; E[end,end]=1.0
+    D = inv(H)*Q
+    return H,Q,E,D
+end
+
+"""
+### SummationByParts.pocs
+"""
+function pocs(Q::Array{T,2},H::Array{T,2},E::Array{T,2},V::Array{T,2},A::Array{T,2}) where T
+    tol = 4e-14
+    err1 = 1.0
+    err2 = 1.0
+  
+    while ((err1 > tol) || (err2 > tol))
+        Q = 0.5.*(E + Q - Q')
+        Q = Q + (H*A - Q*V)*pinv(V) 
+        
+        err1 = norm(Q + Q' - E)
+        err2 = norm(Q*V - H*A)
+        # println("err1: ", err1, "   ", "err2: ", err2)
+    end
+  
+    return Q
 end

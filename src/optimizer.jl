@@ -5,6 +5,7 @@ using LinearAlgebra
 using Random
 using ..SymCubatures, ..OrthoPoly, ..AsymCubatures
 #using IncompleteLU, SparseArrays, IterativeSolvers, Preconditioners
+using IterativeSolvers, Preconditioners, SparseArrays
 
 export pso, levenberg_marquardt, rosenbrock, rastrigin
 
@@ -893,6 +894,7 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
     # compute accuracy for initial guess 
     F, dF = fun(cub, q, compute_grad=true)
     res = norm(F)
+    res_lst = T[]
     res_old = res
     verbose==1 ? print("solvecubature!:\n") : nothing
     verbose==1 ? print("res norm = ",res,"\n") : nothing
@@ -901,7 +903,7 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         v = zeros(T, (cub.numparams + cub.numweights))
         v[1:cub.numparams] = cub.params
         v[cub.numparams+1:end] = cub.weights
-        return res, v, 0
+        return res, v, 0, res_lst 
     end
 
     # initialize the parameter vector
@@ -914,7 +916,6 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
 
     v_old = copy(v)
     alpha = 1.0
-    res_lst = []
     iter_break = 1000
     dv = zeros(size(v))
     # P = Optimizer.preconditioner(Matrix(dF'))
@@ -922,13 +923,14 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
     for k = 1:maxiter
         J = dF*Jac
         JtJ = J'*J
+        # nu = 10*(1/norm(diag(JtJ)))*(norm(F)^2)
         H = JtJ + nu*diagm(diag(JtJ))
         g = -J'*F
 
         # solve only for those parameters and weights that are in mask
         fill!(dv, zero(T))
         Hred = H[mask,mask]
-        dv[mask] = Hred\(g[mask])
+        # dv[mask] = Hred\(g[mask])
         # dv[mask] = pinv(Hred,1e-14)*g[mask]
         # U,S,Vt=svd(Hred,full=true,alg=LinearAlgebra.QRIteration())
         # invS = zeros(length(S),length(S))
@@ -939,6 +941,32 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         # end 
         # pinvHred = Vt*invS*U'
         # dv[mask] = pinvHred*g[mask]
+        
+        xx = dv[mask]
+        bb = g[mask]
+        # P = DiagonalPreconditioner(Hred)
+        # P = CholeskyPreconditioner(Hred)
+        # sparse_Hred = sparse(Hred)
+        # P = AMGPreconditioner(sparse_Hred)
+        # idrs!(xx,Hred,bb)
+        # idrs!(xx,Hred,bb,s=100,Pl=P)
+        # idrs!(xx,Hred,bb,s=200,Pl=P,maxiter=size(Hred,2)*2)
+        # gmres!(xx,Hred,bb,Pl=P,restart=min(10,size(Hred,2)),maxiter=5*size(Hred,2)*2)
+        # gmres!(xx,Hred,bb)
+        # cg!(xx,Hred,bb)
+        # bicgstabl!(xx,Hred,bb)
+        # minres!(xx,Hred,bb)
+        if !(any(isnan, Hred) || any(isinf, Hred) || any(isnan,bb) || any(isinf, bb))
+            xx = Hred\bb 
+            # idrs!(xx,Hred,bb,s=200)
+            # cg!(xx,Hred,bb,maxiter=1*size(Hred,2))
+            # P = CholeskyPreconditioner(Hred)
+            # gmres!(xx,Hred,bb,Pl=P,restart=min(10,size(Hred,2)),maxiter=4*size(Hred,2))
+        end
+        # xx = pinv(Hred)*bb
+
+        # xx = ((Hred./norm(Hred))\(bb./norm(Hred)))
+        dv[mask] = xx
 
         # update cubature definition and check for convergence
         v += dv
@@ -1053,6 +1081,10 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         # verbose==1 ? print("\titer ",k,": res norm = ",res,"\n") : nothing
 
         iter_show = 1
+        if mod(k,iter_show)==0
+            push!(res_lst,res)
+        end
+
         if verbose==1
             if mod(k,iter_show)==0 
                 print("\titer ",k,": res norm = ",res,"\n")
@@ -1060,11 +1092,11 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         end
 
         if res < tol 
-            return res, v, k
+            return res, v, k, res_lst
         end
 
         if (res > 1e3 || isnan(res))
-            return res_old, v_old, 0
+            return res_old, v_old, 0, res_lst
         end
 
         # nu = 1.0/norm(diag(JtJ)) * norm(F)
@@ -1085,21 +1117,21 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         # if mod(iter,100)==0
         #     println(v)
         # end
-        if mod(k,iter_show)==0
-            push!(res_lst,res)
-        end
+        # if mod(k,iter_show)==0
+        #     push!(res_lst,res)
+        # end
         if mod(k,iter_break)==0
             res_break = res_lst[end-2:end] .- res
             if maximum(abs.(res_break))< 1e-14 && norm(res)< 1e-14
                 # break
-                return res, v, iter
+                return res, v, iter, res_lst
             end
             iter_break += 50
         end
 
     end
     # error("solvecubature failed to find solution in ",maxiter," iterations")
-    return res, v, iter
+    return res, v, iter, res_lst
 end
 
 function levenberg_marquardt_weight(fun::Function, cub::SymCub{T}, q::Int64, mask::AbstractArray{Int64,1}; xinit::Array{T}=[], 
