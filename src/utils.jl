@@ -512,7 +512,7 @@ function calcSparseSolution!(A::AbstractArray{Float64,2},
   @assert( size(A,2) == size(x,1) )
   # find an approximate solution
   # rho=0.000781
-  basispursuit!(A, b, x, rho=1.5e-0, alpha=1.0, hist=true, abstol=1e-8,
+  basispursuit!(A, b, x, rho=1.5e-0, alpha=1.0, hist=false, abstol=1e-8,
                 reltol=1e-8)
 
   # use the approximate solution to identify the non-zero entries

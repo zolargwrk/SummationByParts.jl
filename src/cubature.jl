@@ -246,7 +246,7 @@ function solvecubature!(cub::SymCub{T}, q::Int, mask::AbstractArray{Int64,1};
   nperturb_all = 0
   iter_pso = 0
   iter_lma = 0
-  fmin,xinit,k = Optimizer.levenberg_marquardt(Cubature.cubatureresidual,cub,q,mask, xinit=xinit, maxiter=100, tol=tol, nu=1e3, verbose=1)
+  fmin,xinit,k,_ = Optimizer.levenberg_marquardt(Cubature.cubatureresidual,cub,q,mask, xinit=xinit, maxiter=100, tol=tol, nu=1e3, verbose=1)
   iter_lma+=k
   # v = xinit
   # println(fmin)
@@ -258,7 +258,7 @@ function solvecubature!(cub::SymCub{T}, q::Int, mask::AbstractArray{Int64,1};
   for i = 1:5000
     fmin1,v1,_,_,k_pso,nperturb = Optimizer.pso(Cubature.cubatureresidual, n, cub, q, mask,xinit=xinit, np=10,maxiter=800, 
                                             tol=tol, delta1=delta1, delta2=delta2, save_iter=false,verbose=verbose)
-    fmin2,v2,k_lma = Optimizer.levenberg_marquardt(Cubature.cubatureresidual,cub,q,mask, xinit=v1, xL=1e-8, xR=2.0, maxiter=60, tol=tol, nu=1000.0, verbose=verbose)
+    fmin2,v2,k_lma,_ = Optimizer.levenberg_marquardt(Cubature.cubatureresidual,cub,q,mask, xinit=v1, xL=1e-8, xR=2.0, maxiter=60, tol=tol, nu=1000.0, verbose=verbose)
 
     iter_pso += k_pso
     iter_lma += k_lma
@@ -454,7 +454,7 @@ function solvecubaturelma!(cub::SymCub{T}, q::Int, mask::AbstractArray{Int64,1};
   nperturb_all = 0
   iter_pso = 0
   iter_lma = 0
-  fmin,v,k = Optimizer.levenberg_marquardt(Cubature.cubatureresidual,cub,q,mask, xL=0.0, xR=3.0, xinit=xinit, maxiter=maxiter, tol=tol, nu=nu, verbose=verbose)
+  fmin,v,k,res_lst= Optimizer.levenberg_marquardt(Cubature.cubatureresidual,cub,q,mask, xL=0.0, xR=3.0, xinit=xinit, maxiter=maxiter, tol=tol, nu=nu, verbose=verbose)
   iter_lma+=k
 
   if (fmin<5e-14) && (minimum(v)>0.0)
@@ -472,7 +472,7 @@ function solvecubaturelma!(cub::SymCub{T}, q::Int, mask::AbstractArray{Int64,1};
   hist ? println("iter_lma = ",iter_lma, ":  res norm = ",res) : nothing
   hist ? println("----------------------------------------------------------------------------------------------") : nothing
   # hist ? print("res norm = ",res,"\n") : nothing
-  return res
+  return res, res_lst
 
 end
 
@@ -889,17 +889,22 @@ function getLineCubatureGregory(q::Int, N::Int; T=Float64)
   elseif q <= 3
     cub.weights[1:2] = (2.0/(N-1)).* T[5/12, 13/12]
   elseif q <= 4
-    cub.weights[1:3] = (2.0/(N-1)).* T[3/8, 7/6, 23/24]
+    # cub.weights[1:3] = (2.0/(N-1)).* T[3/8, 7/6, 23/24]
+    cub.weights[1:4] = (2.0/(N-1)).* T[17, 59, 43, 49]./48.0
   elseif q <= 5
     cub.weights[1:4] = (2.0/(N-1)).* T[251/720, 299/240, 211/240, 739/720]
   elseif q <= 6
-    cub.weights[1:5] = (2.0/(N-1)).* T[95/288, 317/240, 23/30, 793/720, 157/160]
+    # cub.weights[1:5] = (2.0/(N-1)).* T[95/288, 317/240, 23/30, 793/720, 157/160]
+    cub.weights[1:6] = (2.0/(N-1)).* T[0.13649e5 / 0.43200e5, 0.12013e5 / 0.8640e4, 0.2711e4 / 0.4320e4, 0.5359e4 / 0.4320e4, 0.7877e4 / 0.8640e4, 0.43801e5 / 0.43200e5]
   elseif q <= 7
     cub.weights[1:6] = (2.0/(N-1)).* T[19087/60480, 84199/60480, 18869/30240, 37621/30240, 55031/60480, 61343/60480]
   elseif q <= 8
-    cub.weights[1:7] = (2.0/(N-1)).* T[5257/17280, 22081/15120, 54851/120960, 103/70, 89437/120960, 16367/15120, 23917/24192]
+    # cub.weights[1:7] = (2.0/(N-1)).* T[5257/17280, 22081/15120, 54851/120960, 103/70, 89437/120960, 16367/15120, 23917/24192]
+    cub.weights[1:8] = (2.0/(N-1)).* T[0.1498139e7 / 0.5080320e7, 0.1107307e7 / 0.725760e6, 0.20761e5 / 0.80640e5, 0.1304999e7 / 0.725760e6, 0.299527e6 / 0.725760e6, 0.103097e6 / 0.80640e5, 0.670091e6 / 0.725760e6, 0.5127739e7 / 0.5080320e7]
   elseif q <= 9
     cub.weights[1:8] = (2.0/(N-1)).* T[1070017/3628800, 5537111/3628800, 103613/403200, 261115/145152, 298951/725760, 515677/403200, 3349879/3628800, 3662753/3628800]
+  elseif q > 9
+    error("Quadrature degree not implemented.")
   end
   vtx = reshape(T[-1; 1], (2,1))
   return cub, vtx
@@ -3588,7 +3593,7 @@ function getTetCubatureOmegaLG(q::Int, T=Float64;
     # SymCubatures.setparams!(cub, T[0.045975948972661405, 0.25711822174514515, 0.03713459008520997, 1.752653176319518, 0.036859441217342095, 1.4954321820653618, 0.016764917366921834, 1.1768679911239268, 0.19292345386501383, 0.0341546997588657, 0.3852957669601553, 0.05028087452341492, 0.1523020102411455, 1.2855425238100968, 0.35732266036891663, 0.23409849627611704, 0.5886258079198655, 0.057012540652161936, 0.36050497169381884, 0.6802074836303502, 0.4973399099037253, 0.1836707909892999, 0.44649857682216615, 1.3601587173405376, 0.1732757689129945, 0.7478349555906457, 1.0823826096512206, 0.1334657424720997, 0.6702153480890423, 0.9445683748505124, 0.3733428439831655, 0.662412807962613, 0.936852688803749, 0.27508661319008554])
     # SymCubatures.setweights!(cub, T[0.0005246868271175226, 0.006216322411427566, 0.0018350712284524377, 0.002618366624379609, 0.0010807947821359365, 0.0038141869561627594, 0.008016791500675456, 0.009933486302484066, 0.008258638122729442, 0.005607376727217563, 0.01040903152317131, 0.012443750173156425, 0.002945720760238543, 0.005195586184370721, 0.0034271065468949318, 0.010854893554011358])
     cub_degree = 14
-    tol = 1e-14
+    tol = 5e-14
   elseif q <= 15
     cub = SymCubatures.TetSymCub{T}(vertices=false,
                                   midedges=false,
