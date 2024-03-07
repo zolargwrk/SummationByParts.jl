@@ -4031,30 +4031,28 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
     vtx = T[-1 -1 -1; 1 -1 -1; -1 1 -1; -1 -1 1]
  
     res_min = -1.0
-    # nu = 1e-4 #[1e-2,1e0,1e-2,1e0]
-    # nus = [1e-3, 1e-2, 1e-1, 1e-0, 1e1, 1e2, 1e3]
-    nus = [1e-2,1e1]
-    nu = 1e-0
-    iter_nu=4
-    # nus = [1e-2, 1e1, 1e-0, 1e-1, 1e2, 1e3]
-    # knu =3
+    nus = [1e-2, 1e-1, 1e0, 4e0, 1.6e1, 3.6e1, 6.4e1, 1.08e2, 5.12e2, 1.024e3]
+    # nus = [1e-2, 1e-1, 1e-0, 4e-0, 1.6e1, 3.6e1, 6.4e1, 1.08e2, 2.56e2]
+    # nu = 1e-0
+    # knu =1
     # nu = nus[knu]
 
-    for k = 1:4
-        # if k==1
-        #     nus = [1e-2,1e0]
-        #     iter_nu=3
-        # elseif k==2
-        #     nus = [1e-2,1e1]
-        #     iter_nu=4
-        # elseif k==4
-        #     nus = [1e-2,1e2]
-        #     iter_nu=5
-        # elseif k==4
-        #     nus = [1e-2,1e3]
-        #     iter_nu=6
-        # end
+    function res_change(res_lst)
+        min_res = 0.0 
+        max_diff = 0.0
+        if res_lst!=[]
+            min_res = minimum(res_lst)
+            res_diff = [res_lst[2:end]...,0.0] .- res_lst
+            max_diff = maximum([res_diff[1:end-1]...,0.0])
+            # res_diff = res_lst .- [0.0,res_lst[1:end-1]...]
+            # max_diff = maximum([0.0,res_diff[2:end]...])
+        else
+            return min_res, max_diff
+        end
+        return min_res, max_diff
+    end
 
+    for k = 1:4
         n = cub.numweights
         j=n
         while (j >= 1 && cub.numnodes>=1)
@@ -4295,20 +4293,20 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
             # end
             # rev_sort = false
             rev_sort = true
-            if (k<=1 && cub.numnodes>1 && j<=cub.numweights-(cub.numS1111+cub.numS211+cub.numS22+convert(Int,cub.centroid)))
-                break
-            elseif (k<=2 && cub.numnodes>1)
-            # if (k<=2 && cub.numnodes>1)
+            # if (k<=2 && cub.numnodes>1 && j<=cub.numweights-(cub.numS1111+cub.numS211+convert(Int,cub.centroid)))
+            #     break
+            # elseif (k<=2 && cub.numnodes>1)
+            if (k<=2 && cub.numnodes>1)
                 nmin,sym_min = minnodes_bound_omega_tet(q)
                 sym_cnt = 0
-                ii=j #- convert(Int, cub.centroid)
+                ii=j - convert(Int, cub.centroid)
                 sym_cnt=cub.numweights
-                if cub.centroid && sym_min[1]==0 && sym_cnt-convert(Int,cub.centroid) < j <= sym_cnt
-                    ii = j 
-                    println("was here ------- centroid")
-                elseif sym_cnt- convert(Int,cub.centroid) < j <= sym_cnt 
-                    j = sym_cnt - convert(Int,cub.centroid)
-                end
+                # if cub.centroid && sym_min[1]==0 && sym_cnt-convert(Int,cub.centroid) < j <= sym_cnt
+                #     ii = j 
+                #     println("was here ------- centroid")
+                # elseif sym_cnt- convert(Int,cub.centroid) < j <= sym_cnt 
+                #     j = sym_cnt - convert(Int,cub.centroid)
+                # end
                 sym_cnt -= convert(Int,cub.centroid)
 
                 sym_buff = zeros(4,1)
@@ -4318,7 +4316,8 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                     sym_buff[3] = 2*convert(Int, floor((cub.numS22 - sym_min[3])/2))
                     sym_buff[4] = 2*convert(Int, floor((cub.numS31 - sym_min[2])/2))
                 end 
-                if cub.numS1111 > sym_min[5]+sym_buff[1] && sym_cnt-cub.numS1111 < j <= sym_cnt
+
+                if cub.numS1111 > sym_min[5]-sym_buff[1] && sym_cnt-cub.numS1111 < j <= sym_cnt
                     # s = sortperm(cub.weights[sym_cnt+1+convert(Int,cub.centroid)-cub.numS1111:sym_cnt+convert(Int,cub.centroid)],rev=true)
                     s = sortperm(ss[sym_cnt+1+convert(Int,cub.centroid)-cub.numS1111:sym_cnt+convert(Int,cub.centroid)],rev=rev_sort)
                     # s = sortperm(ss[sym_cnt+1-cub.numS1111:sym_cnt],rev=true)
@@ -4329,7 +4328,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                 end
                 sym_cnt -= cub.numS1111
 
-                if cub.numS211 > sym_min[4]+sym_buff[2] && sym_cnt-cub.numS211 < j <= sym_cnt
+                if cub.numS211 > sym_min[4]-sym_buff[2] && sym_cnt-cub.numS211 < j <= sym_cnt
                     # s = sortperm(cub.weights[sym_cnt+1+convert(Int,cub.centroid)-cub.numS211:sym_cnt+convert(Int,cub.centroid)],rev=true)
                     s = sortperm(ss[sym_cnt+1+convert(Int,cub.centroid)-cub.numS211:sym_cnt+convert(Int,cub.centroid)],rev=rev_sort)
                     # s = sortperm(ss[sym_cnt+1-cub.numS211:sym_cnt],rev=true)
@@ -4339,7 +4338,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                     j = sym_cnt-cub.numS211
                 end
                 sym_cnt -= cub.numS211
-                if cub.numS22 > sym_min[3]+sym_buff[3] && sym_cnt-cub.numS22 < j <= sym_cnt
+                if cub.numS22 > sym_min[3]-sym_buff[3] && sym_cnt-cub.numS22 < j <= sym_cnt
                     # s = sortperm(cub.weights[sym_cnt+1+convert(Int,cub.centroid)-cub.numS22:sym_cnt+convert(Int,cub.centroid)],rev=true)
                     s = sortperm(ss[sym_cnt+1+convert(Int,cub.centroid)-cub.numS22:sym_cnt+convert(Int,cub.centroid)],rev=rev_sort)
                     # s = sortperm(ss[sym_cnt+1-cub.numS22:sym_cnt],rev=true)
@@ -4351,7 +4350,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                     j = sym_cnt-cub.numS22
                 end
                 sym_cnt -= cub.numS22
-                if cub.numS31 > sym_min[2]+sym_buff[4] && sym_cnt-cub.numS31 < j <= sym_cnt
+                if cub.numS31 > sym_min[2]-sym_buff[4] && sym_cnt-cub.numS31 < j <= sym_cnt
                     # s = sortperm(cub.weights[sym_cnt+1+convert(Int,cub.centroid)-cub.numS31:sym_cnt+convert(Int,cub.centroid)],rev=true)
                     s = sortperm(ss[sym_cnt+1+convert(Int,cub.centroid)-cub.numS31:sym_cnt+convert(Int,cub.centroid)],rev=rev_sort)
                     # s = sortperm(ss[sym_cnt+1-cub.numS31:sym_cnt],rev=true)
@@ -4409,232 +4408,160 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
     
             SymCubatures.setparams!(cub2, params)
             SymCubatures.setweights!(cub2, weights)
-
+            
             if cub2.numnodes>=1
                 xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
                 xinit0 = copy(xinit)
                 mask = Int[]
                 append!(mask, 1:cub2.numparams+cub2.numweights) 
 
-                gr = (sqrt(5.0) + 1.0) / 2.0
-                nus = [1e-2,1e0]
-                nu_a = nus[1]
-                nu_b = nus[end]
-                nu_c = nu_b - (nu_b - nu_a)/gr 
-                nu_d = nu_a + (nu_b - nu_a)/gr 
-                nu = nu_a
-                res_a,_ = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu_a)
-                res_c,_ = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu_c)
-                res_d,_ = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu_d)
-                res_b,_ = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu_b)
-                res = 1.0
-
-                cnt=0
-                max_cnt=11
-                while cnt<=max_cnt
-                    res_lst = [res_a,res_c,res_d,res_b]
-                    # if ((maximum(res_lst)-minimum(res_lst))/minimum(res_lst)>1.5 && maximum(res_lst)<2e0 && minimum(res_lst)!=res_b) || minimum(res_lst)<1e-1  || cnt==max_cnt
-                    # if (minimum(res_lst)!=res_b) || cnt==max_cnt
-                    if ((maximum(abs.(res_lst./res_b .-1.0)))>1e-2 && maximum(res_lst)<1e1 && (minimum(res_lst)!=res_b))|| 
-                        maximum(res_lst)<1e-1 || cnt==max_cnt
-                        nu = [nu_a, nu_c, nu_d, nu_b][argmin([res_a,res_c,res_d,res_b])]
-                        println("\n","\n","\n", "nus = ", nus, "\n","\n","\n")
+                res2 = Inf 
+                res_ratio2 = 0.0
+                idx = 1
+                nu = nus[1]
+                # for i=2:2:length(nus)
+                for i = 1:length(nus)
+                    res0,res_lst0= Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nus[i])
+                    if res0 <= 1e-4
+                        res2 = res0
+                        idx = i 
                         break
-                    # elseif res_b < 1e-1
-                    #     nu = nu_b 
-                    #     println("\n","\n","\n", "nus = ", nus, "\n","\n","\n")
-                    #     break
-                    else 
-                        nus = [nus[1],nus[2]*2]
-                        nu_a = nus[1]
-                        nu_b = nus[end]
-                        nu_c = nu_b - (nu_b - nu_a)/gr 
-                        nu_d = nu_a + (nu_b - nu_a)/gr
-                        if res_a > 1e-4
-                            res_b, _ = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu_b)
-                            nu = nu_b 
-                            if res_b > 1e-4
-                                res_c, _ = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu_c)
-                                nu = nu_c
-                                if res_c>1e-4
-                                    res_d, _ = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu_d)
-                                    nu = nu_d
-                                end
-                            end
-                        end
+                    # elseif res0<res2
+                    #     res2 = res0 
+                    #     idx = i
+                    elseif (res_lst0[1]/res_lst0[end]>res_ratio2+5e-1) 
+                        res_ratio2 = res_lst0[1]/res_lst0[end]
+                        idx = i 
                     end
-                    cnt+=1
-                    # println("\n","\n","\n", "nus = ", nus, "\n","\n","\n")
+                end
+                # if res2 > 1e-4
+                #     res1,_= Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nus[idx-1])
+                #     res3,_= Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nus[idx+1])
+                #     nu = nus[[idx-1,idx,idx+1][argmin([res1,res2,res3])]]
+                # end
+                nu = nus[idx]
+                println("\n","\n", "nu = ", nu, "\n","\n")
+
+                # res = Cubature.solvecubature!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  xinit=xinit, delta1=1e-4, delta2=1e-4)
+                res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                println("---------->>> res: 1")
+
+                res_old=copy(res)
+                if res > 5e-14 && res < 1e4
+                    xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                    res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                    println("---------->>> res: 2")
                 end
 
-                if cnt < max_cnt 
-                    for inu = 1:iter_nu
-                        if (res_a > 1e-4 && res_b > 1e-4 && res_c > 1e-4 && res_d > 1e-4)
-                            if res_c < res_d
-                                nu_b = nu_d
-                                res_b = res_d
-                                nu_d = nu_c
-                                res_d = res_c
-                                nu_c = nu_b - (nu_b - nu_a)/gr
-                                res_c, _ = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu_c)
-                            else
-                                nu_a = nu_c 
-                                res_a = res_c 
-                                nu_c = nu_d
-                                res_c = res_d 
-                                nu_d = nu_a + (nu_b - nu_a)/gr 
-                                res_d, _ = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu_d)
-                            end    
-                                
-                            println("nu_a = ", nu_a, ":\t res_a = ", res_a)
-                            println("nu_c = ", nu_c, ":\t res_c = ", res_c)
-                            println("nu_d = ", nu_d, ":\t res_d = ", res_d)
-                            println("nu_b = ", nu_b, ":\t res_b = ", res_b)
-                        end      
-                    end
-                    nu = [nu_a, nu_c, nu_d, nu_b][argmin([res_a,res_c,res_d,res_b])]
-                    if nu==-1.0
-                        error("nu cannot be negative!")
-                    end
-                    println("==============================")
-                    println("-------->>>>>>>>>   nu = ", nu)
-                    println("==============================")
+                
 
+                res_ratio=res/res_old 
+                # println("res_here = ", res)
+                # res_old=res
+                # jnu=1
+                for i=1:50
+                    # # if ((res_ratio <= 9.8e-1 && res > 1e-2) || (res_ratio <= 9.99e-1 && res < 1e-2 && res > 1e-10))
+                    # if ((res_old-res)/res_old>1e-2 && res>1e-8 && res <1e4)
+                    #     res_old=res
+                    #     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                    #     res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, delta1=1e-4, delta2=1e-4)
+                    #     # res_ratio=res/res_old 
+                    #     # res_old=res
+                    # end
 
-                    # res = Cubature.solvecubature!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  xinit=xinit, delta1=1e-4, delta2=1e-4)
-                    res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
-                    println("---------->>> res: 1")
+                    # if res_lst!=[]
+                    #     min_res = minimum(res_lst)
+                    #     # max_res = maximum(res_lst)
+                    #     res_diff = [res_lst[2:end]...,0.0] .- res_lst
+                    #     max_diff = maximum([res_diff[1:end-1]...,0.0])
+                    # else
+                    #     min_res = 0.0 
+                    #     max_diff = 0.0
+                    # end
 
-                    res_old=copy(res)
-                    if res > 5e-14 && res < 1e4
+                    if ((res_old-res)/res_old>1e-1 && res>5e-4 && res <1e4)
+                        res_old=res
                         xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
                         res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
-                        println("---------->>> res: 2")
+                        println("---------->>> res: 3")
                     end
-
-                    function res_change(res_lst)
-                        min_res = 0.0 
-                        max_diff = 0.0
-                        if res_lst!=[]
-                            min_res = minimum(res_lst)
-                            res_diff = [res_lst[2:end]...,0.0] .- res_lst
-                            max_diff = maximum([res_diff[1:end-1]...,0.0])
-                            # res_diff = res_lst .- [0.0,res_lst[1:end-1]...]
-                            # max_diff = maximum([0.0,res_diff[2:end]...])
-                        else
-                            return min_res, max_diff
-                        end
-                        return min_res, max_diff
-                    end
-
-                    res_ratio=res/res_old 
-                    # println("res_here = ", res)
-                    # res_old=res
-                    # jnu=1
-                    for i=1:50
-                        # # if ((res_ratio <= 9.8e-1 && res > 1e-2) || (res_ratio <= 9.99e-1 && res < 1e-2 && res > 1e-10))
-                        # if ((res_old-res)/res_old>1e-2 && res>1e-8 && res <1e4)
-                        #     res_old=res
-                        #     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                        #     res = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, delta1=1e-4, delta2=1e-4)
-                        #     # res_ratio=res/res_old 
-                        #     # res_old=res
-                        # end
-
-                        # if res_lst!=[]
-                        #     min_res = minimum(res_lst)
-                        #     # max_res = maximum(res_lst)
-                        #     res_diff = [res_lst[2:end]...,0.0] .- res_lst
-                        #     max_diff = maximum([res_diff[1:end-1]...,0.0])
-                        # else
-                        #     min_res = 0.0 
-                        #     max_diff = 0.0
-                        # end
-
-                        if ((res_old-res)/res_old>1e-1 && res>5e-4 && res <1e4)
-                            res_old=res
-                            xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                            res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
-                            println("---------->>> res: 3")
-                        end
-                        
-                        if (res<5e-4 && res>1e-8)
-                            res_old=res
-                            xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                            res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
-                            println("---------->>> res: 4")
-                        end
-
-                        if res == res_old 
-                            res_old=res
-                            break 
-                        end
-
-                        # min_res, max_diff = res_change(res_lst)
-                        # jnu=1
-                        # if (i==10 && res>1e-8)
-                        #     jnu = 1
-                        #     res2=copy(res)
-                        #     while (jnu <= length(nus) && res2>1e-8)
-                        #         if jnu!=knu
-                        #             # res_old=res
-                        #             nu = nus[jnu]
-                        #             xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                        #             res2,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
-                        #             # min_res, max_diff = res_change(res_lst)
-                        #             println("nu = ", nu)
-                        #             println("---------->>> res: 5")
-                        #             # res = res2
-                        #             for ii =1:5
-                        #                 # if ((res_old-res)/res_old>1e-2 && res>1e-8 && res <1e4)
-                        #                 if (res2<0.1*(6-ii) && res2>1e-8)  
-                        #                     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                        #                     res2,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
-                        #                     println("---------->>> res: 6")
-                        #                 end
-                        #             end
-                        #         end
-                        #         jnu+=1
-                        #     end
-                        # end
                     
-                        # if (i==10 && res>1e-8)
-                        #     jnu = 1
-                        #     while (jnu <= length(nus) && res>1e-8)
-                        #         if jnu!=knu
-                        #             res_old = res
-                        #             nu = nus[jnu]
-                        #             # xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                        #             res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit0, nu=nu)
-                        #             println("nu = ", nu)
-                        #             println("---------->>> res: 5")
-                        #             for ii =1:5
-                        #                 if ((res_old-res)/res_old>1e-2 && res>1e-8 && res <1e4)
-                        #                 # if (res<0.1*(6-ii) && res>1e-8)
-                        #                     res_old = res
-                        #                     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                        #                     res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
-                        #                     println("---------->>> res: 6")
-                        #                 end
-                        #             end
-                        #         end
-                        #         jnu+=1
-                        #     end
-                        # end
-                        
-                        # min_res, max_diff = res_change(res_lst)
-                        # if ((max_diff >=1e-2 || min_res<1e-1) && res>1e-8 && jnu<=length(nus))# && nu2 < 1e2)
-                        #     # nu2 *= pi 
-                        #     nu2 = nus[jnu]
-                        #     jnu+=1
-                        #     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                        #     res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu2)
-                        #     # min_res, max_diff = res_change(res_lst)
-                        #     println("nu2 = ", nu2)
-                        #     println("---------->>> res: 5")
-                        # end
-
+                    if (res<5e-4 && res>1e-8)
+                        res_old=res
+                        xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                        res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                        println("---------->>> res: 4")
                     end
+
+                    if res == res_old 
+                        res_old=res
+                        break 
+                    end
+
+                    # min_res, max_diff = res_change(res_lst)
+                    # jnu=1
+                    # if (i==10 && res>1e-8)
+                    #     jnu = 1
+                    #     res2=copy(res)
+                    #     while (jnu <= length(nus) && res2>1e-8)
+                    #         if jnu!=knu
+                    #             # res_old=res
+                    #             nu = nus[jnu]
+                    #             xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                    #             res2,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                    #             # min_res, max_diff = res_change(res_lst)
+                    #             println("nu = ", nu)
+                    #             println("---------->>> res: 5")
+                    #             # res = res2
+                    #             for ii =1:5
+                    #                 # if ((res_old-res)/res_old>1e-2 && res>1e-8 && res <1e4)
+                    #                 if (res2<0.1*(6-ii) && res2>1e-8)  
+                    #                     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                    #                     res2,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                    #                     println("---------->>> res: 6")
+                    #                 end
+                    #             end
+                    #         end
+                    #         jnu+=1
+                    #     end
+                    # end
+                
+                    # if (i==10 && res>1e-8)
+                    #     jnu = 1
+                    #     while (jnu <= length(nus) && res>1e-8)
+                    #         if jnu!=knu
+                    #             res_old = res
+                    #             nu = nus[jnu]
+                    #             # xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                    #             res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit0, nu=nu)
+                    #             println("nu = ", nu)
+                    #             println("---------->>> res: 5")
+                    #             for ii =1:5
+                    #                 if ((res_old-res)/res_old>1e-2 && res>1e-8 && res <1e4)
+                    #                 # if (res<0.1*(6-ii) && res>1e-8)
+                    #                     res_old = res
+                    #                     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                    #                     res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu)
+                    #                     println("---------->>> res: 6")
+                    #                 end
+                    #             end
+                    #         end
+                    #         jnu+=1
+                    #     end
+                    # end
+                    
+                    # min_res, max_diff = res_change(res_lst)
+                    # if ((max_diff >=1e-2 || min_res<1e-1) && res>1e-8 && jnu<=length(nus))# && nu2 < 1e2)
+                    #     # nu2 *= pi 
+                    #     nu2 = nus[jnu]
+                    #     jnu+=1
+                    #     xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
+                    #     res,res_lst = Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=true, verbose=true,  maxiter=10, xinit=xinit, nu=nu2)
+                    #     # min_res, max_diff = res_change(res_lst)
+                    #     println("nu2 = ", nu2)
+                    #     println("---------->>> res: 5")
+                    # end
+
                 end
                 # nu=nus[knu]
 
