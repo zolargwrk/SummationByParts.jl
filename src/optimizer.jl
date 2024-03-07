@@ -5,6 +5,7 @@ using LinearAlgebra
 using Random
 using ..SymCubatures, ..OrthoPoly, ..AsymCubatures
 #using IncompleteLU, SparseArrays, IterativeSolvers, Preconditioners
+using IterativeSolvers, Preconditioners
 
 export pso, levenberg_marquardt, rosenbrock, rastrigin
 
@@ -928,8 +929,8 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         # solve only for those parameters and weights that are in mask
         fill!(dv, zero(T))
         Hred = H[mask,mask]
-        dv[mask] = Hred\(g[mask])
-        # dv[mask] = pinv(Hred,1e-14)*g[mask]
+        # dv[mask] = Hred\(g[mask])
+        # dv[mask] = pinv(Hred,1e-16)*g[mask]
         # U,S,Vt=svd(Hred,full=true,alg=LinearAlgebra.QRIteration())
         # invS = zeros(length(S),length(S))
         # for i=1:length(axes(S,1))
@@ -939,6 +940,28 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         # end 
         # pinvHred = Vt*invS*U'
         # dv[mask] = pinvHred*g[mask]
+        xx = dv[mask]
+        bb = g[mask]
+        # P = DiagonalPreconditioner(Hred)
+        # P = CholeskyPreconditioner(Hred,2)
+        # idrs!(xx,Hred,bb,s=200,Pl=P,maxiter=size(Hred,2)*2)
+        # idrs!(xx,Hred,bb,s=64,Pl=P)
+        # idrs!(xx,Hred,bb,s=100,Pl=P)
+        # cg!(xx,Hred,bb)
+        # gmres!(xx,Hred,bb,Pl=P,restart=min(50,size(Hred,2)),maxiter=5*size(Hred,2)*2)
+        # gmres!(xx,Hred,bb)
+        # bicgstabl!(xx,Hred,bb,10)
+        # bicgstabl!(xx,Hred,bb)
+        # chebyshev!(xx,Hred,bb,-10.0^round(2*q),10.0^round(2*q))
+        # xx = Hred\bb
+
+        if !(any(isnan, Hred) || any(isinf, Hred) || any(isnan,bb) || any(isinf, bb))
+            xx = Hred\bb 
+            # idrs!(xx,Hred,bb,s=64)
+            # cg!(xx,Hred,bb,maxiter=10*size(Hred,2))
+        end
+        
+        dv[mask] = xx
 
         # update cubature definition and check for convergence
         v += dv
