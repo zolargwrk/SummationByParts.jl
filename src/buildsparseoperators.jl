@@ -4036,11 +4036,12 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
     # nus = [1e-2,1e-1, 1e0, 4e0, 1.2e1, 1.6e1, 2.4e1, 3.6e1, 4.8e1, 6.4e1, 8.4e1, 9.6e1, 1.2e2, 1.6e2, 2e2, 4e2, 8e2, 1e3]
     # nus = [1e-2,1e-1, 1e0, 4e0, 1.2e1, 1.6e1, 3.6e1, 6.4e1, 8e1, 1e2, 2e2, 4e2, 8e2, 1e3]
     # nus = [1e-2, 1e-1, 1e0, 1e1, 5e1, 1e2, 8e2, 1.6e3]
-    nus = [1e-3, 1e-2, 1e-1, 1e0, 1e1, 5e1, 1e2, 8e2]
+    nus = [1e-2, 1e-1, 1e0, 4e0, 1.6e1, 3.2e1]
     nus_used = Set{T}()
     nus_success = Set{T}()
-
-    for k = 1:3
+    nstart = cub.numweights 
+    nend = 0
+    for k = 1:5
         n = cub.numweights
         j=n
         while (j >= 1 && cub.numnodes>=1)
@@ -4297,12 +4298,14 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                 nu = nus[1]
 
                 for i = 1:length(nus)
-                    res0,res_lst0= Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=print_hist, verbose=print_hist,  maxiter=10, xinit=xinit, nu=nus[i])
+                    res0,res_lst0= Cubature.solvecubaturelma!(cub2, q, mask, tol=5e-14, hist=print_hist, verbose=print_hist,  maxiter=20, xinit=xinit, nu=nus[i])
                     if res0 <= 1e-4
                         res2 = res0
                         idx = i 
+                        xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
                         break
-                    elseif (res_lst0[1]/res_lst0[end]>res_ratio2*1.1) 
+                    elseif (res_lst0[1]/res_lst0[end]>res_ratio2*1.2 && res0 < res2-1e-1)
+                        res2 = res0 
                         res_ratio2 = res_lst0[1]/res_lst0[end]
                         idx = i 
                     end
@@ -4378,6 +4381,11 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                 break 
             end
         end
+        nend = cub.numweights
+        if nstart == nend 
+            break 
+        end
+        nstart = nend
     end
     println("=====================")
     if res_min==-1.0
