@@ -956,7 +956,7 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
         # cg!(xx,Hred,bb)
         # bicgstabl!(xx,Hred,bb)
         # minres!(xx,Hred,bb)
-        if !(any(isnan, Hred) || any(isinf, Hred) || any(isnan,bb) || any(isinf, bb))
+        if !(any(isnan, Hred) || any(isinf, Hred) || det(Hred)==0 || any(isnan,bb) || any(isinf, bb))
             xx = Hred\bb 
             # idrs!(xx,Hred,bb,s=200)
             # cg!(xx,Hred,bb,maxiter=1*size(Hred,2))
@@ -1106,9 +1106,9 @@ function levenberg_marquardt(fun::Function, cub::SymCub{T}, q::Int64, mask::Abst
             SymCubatures.setparams!(cub, v[1:cub.numparams])
             SymCubatures.setweights!(cub, v[cub.numparams+1:end])
             F, dF = fun(cub, q, compute_grad=true)
-            nu *= 5.0
+            nu *= 2.0
         else
-            nu /= 5.0
+            nu /= 2.0
             res_old = res
         end
         alpha=1.0

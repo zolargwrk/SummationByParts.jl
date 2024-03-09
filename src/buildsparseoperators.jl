@@ -4036,7 +4036,8 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
     # nus = [1e-2,1e-1, 1e0, 4e0, 1.2e1, 1.6e1, 2.4e1, 3.6e1, 4.8e1, 6.4e1, 8.4e1, 9.6e1, 1.2e2, 1.6e2, 2e2, 4e2, 8e2, 1e3]
     # nus = [1e-2,1e-1, 1e0, 4e0, 1.2e1, 1.6e1, 3.6e1, 6.4e1, 8e1, 1e2, 2e2, 4e2, 8e2, 1e3]
     # nus = [1e-2, 1e-1, 1e0, 1e1, 5e1, 1e2, 8e2, 1.6e3]
-    nus = [1e-2, 1e-1, 1e0, 4e0, 1.6e1, 3.2e1]
+    # nus = [1e-2, 1e-1, 1e0]
+    nus = [1e-1, 1e0, 1e1, 1e2]
     nus_used = Set{T}()
     nus_success = Set{T}()
     nstart = cub.numweights 
@@ -4166,9 +4167,10 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
             ss = w[idx]
             rev_sort = true
 
-            if (k<=1 && cub.numnodes>1)
+            if (k<=1 && cub.numnodes>1 && j<=cub.numweights-(cub.numS1111+cub.numS211+convert(Int,cub.centroid)))
+                break
+            elseif (k<=2 && cub.numnodes>1)
                 nmin,sym_min = minnodes_bound_omega_tet(q)
-                sym_cnt = 0
                 ii=j #- convert(Int, cub.centroid)
                 sym_cnt=cub.numweights
                 if cub.centroid && sym_min[1]==0 && sym_cnt-convert(Int,cub.centroid) < j <= sym_cnt
@@ -4211,7 +4213,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                 if j <= 0
                     break
                 end 
-            elseif (k<=3 && cub.numnodes>1)
+            elseif (k<=4 && cub.numnodes>1)
                 ii = j 
                 sym_cnt=cub.numweights
                 if sym_cnt-convert(Int,cub.centroid) < j <= sym_cnt
@@ -4287,13 +4289,13 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
             print_hist=false
             if cub2.numnodes>=1
                 xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
-                xinit0 = copy(xinit)
+                # xinit0 = copy(xinit)
                 mask = Int[]
                 append!(mask, 1:cub2.numparams+cub2.numweights) 
 
                 res2 = Inf 
                 res_ratio2 = 0.0
-                res_lst2 = []
+                # res_lst2 = []
                 idx = 1
                 nu = nus[1]
 
@@ -4304,7 +4306,7 @@ function eliminate_nodes(cub::TetSymCub{T}, p::Int, q::Int) where {T}
                         idx = i 
                         xinit = convert.(T,collect(Iterators.flatten([cub2.params,cub2.weights])))
                         break
-                    elseif (res_lst0[1]/res_lst0[end]>res_ratio2*1.2 && res0 < res2-1e-1)
+                    elseif (res_lst0[1]/res_lst0[end]>res_ratio2*1.1 && res2/res0 >2.0)
                         res2 = res0 
                         res_ratio2 = res_lst0[1]/res_lst0[end]
                         idx = i 
